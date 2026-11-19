@@ -112,6 +112,15 @@
     font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tmr.run { border-color: var(--yellow); color: var(--yellow); box-shadow: 0 0 8px rgba(243,156,18,0.35); }
   .tmr.end { background: var(--green); border-color: var(--green); color: #fff; }
+  .plan-fold > summary { cursor: pointer; list-style: none; }
+  .plan-fold > summary::-webkit-details-marker { display: none; }
+  .plan-fold > summary::before { content: '▸'; margin-right: 8px; }
+  .plan-fold[open] > summary::before { content: '▾'; }
+  .fold-hint { font-size: 11px; font-weight: 500; opacity: 0.75; margin-left: auto; }
+  .plan-fold[open] .fold-hint { display: none; }
+  .reco { margin: 6px 0 2px; }
+  .reco .kg-val { font-size: 14px; }
+  .reco .kg-goal { font-size: 11px; margin-top: 1px; }
   .qs-row { display: flex; gap: 6px; margin-top: 8px; }
   .qs-in { padding: 5px 8px; font-size: 13px; }
   .log-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
@@ -780,14 +789,13 @@ function renderDay(day) {
     return h;
   }
   h += `<div class="week-sub">${dayMuscleLine(day)}</div>`;
-  h += `<div class="day-card"><div class="day-title">Plan del día</div>${planTableHtml(day, dynSuggest)}</div>`;
+  h += `<details class="day-card plan-fold"><summary class="day-title">Plan del día <span class="fold-hint">ver</span></summary>${planTableHtml(day, dynSuggest)}</details>`;
 
   const d = draftOf(day.key), pr = draftProgress(day.key);
   h += `<div class="day-card" id="session-card"><div class="day-title"><span>Registro de la sesión</span>
       <input type="date" class="date-in" data-act="draft-date" value="${esc(d.date)}"></div>
     <div class="prog-wrap"><div class="prog-txt"><span>Progreso de la sesión</span><span id="prog-txt">${pr.done} / ${pr.total} series</span></div>
       <div class="progress${pr.done === pr.total ? ' ok' : ''}" id="prog-bar"><span style="width:${pr.total ? pr.done / pr.total * 100 : 0}%"></span></div></div>`;
-  h += `<div class="kg-meta" style="padding:8px 16px 0;font-size:11px">RIR = repeticiones que te quedaban en reserva antes del fallo técnico (0 = no podías hacer ni una más con buena técnica). Lo estimas tú al terminar la serie; es opcional.</div>`;
   day.ex.map(eff).forEach(ex => {
     const vsel = ex.vList.length > 1 ? `<select class="set-in" style="font-size:12px;padding:5px;margin-top:6px" data-act="variant" data-ex="${ex.id}" aria-label="Variante">${ex.vList.map((v, i) =>
       `<option value="${i}"${i === ex.vIdx ? ' selected' : ''}>${i === 0 ? 'Plan: ' : 'Variante: '}${esc(v.name)}</option>`).join('')}</select>` : '';
@@ -797,6 +805,7 @@ function renderDay(day) {
       ${ex.vIdx ? `<div class="kg-meta">En el plan: ${esc(ex.planName)} · mismas series y repeticiones</div>` : ''}
       <div>${tagsOf(ex)}${ex.bw ? '<span class="unit-badge">kg = lastre</span>' : ''}</div>
       ${vsel}
+      ${recoHtml(ex)}
       <div class="log-cmp" id="cmp-${ex.id}">${cmpHtml(ex, d)}</div>
       <div class="set-grid"><span class="set-hdr">#</span><span class="set-hdr">Peso (kg)</span><span class="set-hdr">Reps</span><span class="set-hdr">RIR</span><span class="set-hdr"></span>`;
     d.sets[ex.id].forEach((s, i) => {
@@ -819,6 +828,13 @@ function nextTrainingDay(day) {
   const i = PLAN.indexOf(day);
   for (let k = 1; k <= 7; k++) { const d = PLAN[(i + k) % 7]; if (d.type === 'train') return d; }
   return null;
+}
+// Recomendación de carga para hoy, calculada con la última sesión guardada (se actualiza al guardar)
+function recoHtml(ex) {
+  const s = suggestion(ex);
+  const val = k => ex.bw ? (k ? `lastre ${fmtKg(k)} kg` : 'peso corporal') : `${fmtKg(k)} kg`;
+  if (!s.last) return `<div class="reco"><span class="kg-goal">Sin registro previo: elige una carga para quedar a RIR ${rirOf(ex)}</span></div>`;
+  return `<div class="reco"><span class="kg-val ${s.cls}">Hoy: ${val(s.kg)}</span><span class="kg-goal">${s.goal}</span></div>`;
 }
 function cmpHtml(ex, d) {
   const h = exHistory(ex.id);
