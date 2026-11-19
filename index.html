@@ -184,7 +184,9 @@
   .log-cmp { font-size: 10.5px; color: var(--muted); margin: 4px 0 8px; line-height: 1.45; }
   .log-cmp b { color: var(--text); font-weight: 600; }
   .set-grid { display: grid; grid-template-columns: 30px minmax(0,1fr) minmax(0,1fr) 64px 46px; gap: 6px; align-items: center; }
-  .set-hdr { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  /* cabeceras alineadas con el texto de las casillas (borde 1px + relleno 8px) y "#" centrado sobre el número */
+  .set-hdr { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding-left: 9px; }
+  .set-grid > .set-hdr:first-child { padding-left: 0; text-align: center; }
   .set-no { font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; }
   .set-in { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
     padding: 8px 8px; font-size: 15px; font-family: inherit; min-width: 0; }
@@ -923,7 +925,6 @@ function renderDay(day) {
     h += `<div class="log-ex" data-ex="${ex.id}">
       <div class="log-head"><span class="log-name">${esc(ex.name)}</span><span class="log-right"><span class="log-plan">${ex.sets} × ${esc(ex.reps)} · RIR ${rirOf(ex)} · ${restOf(ex)}</span>
         <button class="tmr" data-act="timer" data-ex="${ex.id}" aria-label="Temporizador de descanso">⏱ ${fmtClock(restSecs(ex))}</button></span></div>
-      ${ex.vIdx ? `<div class="kg-meta">En el plan: ${esc(ex.planName)} · mismas series y repeticiones</div>` : ''}
       <div>${tagsOf(ex)}${ex.bw ? '<span class="unit-badge">kg = lastre</span>' : ''}</div>
       ${vsel}
       ${recoHtml(ex)}
