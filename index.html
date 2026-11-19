@@ -120,6 +120,8 @@
   .plan-fold[open] > summary::before { content: '▾'; }
   .fold-hint { font-size: 11px; font-weight: 500; opacity: 0.75; margin-left: auto; }
   .plan-fold[open] .fold-hint { display: none; }
+  .sess-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .sess-time.run { color: var(--yellow); }
   .reco { margin: 6px 0 2px; }
   .reco .kg-val { font-size: 14px; }
   .reco .kg-goal { font-size: 11px; margin-top: 1px; }
@@ -813,9 +815,23 @@ function autoStart(exId) {   // ✓ y escribir reps casi a la vez no deben reini
   if (t && t.ex === exId && Date.now() - t.start < 5000) return;
   startTimer(exId);
 }
+// ===== Cronómetro de la sesión completa =====
+function fmtDur(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(s); }
+function sessTimeTxt(d) {
+  if (!d || !d.startedAt) return '⏱ 0:00';
+  return '⏱ ' + fmtDur(((d.endedAt || Date.now()) - d.startedAt) / 1000) + (d.endedAt ? ' ✓' : '');
+}
+function paintSessTime() {
+  const el = document.getElementById('sess-time'); if (!el) return;
+  const cd = curDay(); if (!cd || cd.type !== 'train') return;
+  const d = S.drafts[cd.key], txt = sessTimeTxt(d);
+  if (el.textContent !== txt) el.textContent = txt;
+  el.classList.toggle('run', !!(d && d.startedAt && !d.endedAt));
+}
 function stopTimer() { S.timer = null; save(); tick(); }
 function tick() {
   if (!S) return;
+  paintSessTime();
   const t = S.timer, now = Date.now(), left = t ? (t.end - now) / 1000 : 0;
   document.querySelectorAll('.tmr').forEach(b => {
     const on = t && t.ex === b.dataset.ex, ex = eff(EX_BY_ID[b.dataset.ex]);
@@ -832,7 +848,8 @@ function tick() {
     <button class="btn ghost small" data-act="t-adj" data-d="15">+15</button><button class="btn ghost small" data-act="t-sound" aria-label="Sonido"></button><button class="btn ghost small" data-act="t-stop" aria-label="Parar">✕</button>`;
   bar.className = 'show' + (left <= 0 ? ' end' : ''); document.body.classList.add('has-timer');
   bar.querySelector('.rb-lbl').textContent = left > 0 ? `Descanso (${fmtClock(t.dur)})` : 'Descanso terminado';
-  bar.querySelector('.rb-name').textContent = t.name;
+  const cd = curDay(), dd = cd && cd.type === 'train' && S.drafts[cd.key];
+  bar.querySelector('.rb-name').textContent = t.name + (dd && dd.startedAt ? ' · sesión ' + sessTimeTxt(dd).replace('⏱ ', '') : '');
   bar.querySelector('.rb-time').textContent = fmtClock(Math.max(0, left));
   bar.querySelector('[data-act=t-sound]').textContent = S.sound ? '🔊' : '🔇';
 }
@@ -893,13 +910,12 @@ function renderDay(day) {
       + (next ? `<p class="kg-meta" style="margin-top:8px">Siguiente sesión: ${next.name} — ${esc(next.title)}</p>` : '') + `</div></div>`;
     return h;
   }
-  h += `<div class="week-sub">${dayMuscleLine(day)}</div>`;
   h += `<details class="day-card plan-fold"><summary class="day-title">Plan del día <span class="fold-hint">ver</span></summary>${planTableHtml(day, dynSuggest)}</details>`;
 
   const d = draftOf(day.key), pr = draftProgress(day.key);
   h += `<div class="day-card" id="session-card"><div class="day-title"><span>Registro de la sesión</span>
       <input type="date" class="date-in" data-act="draft-date" value="${esc(d.date)}"></div>
-    <div class="prog-wrap"><div class="prog-txt"><span>Progreso de la sesión</span><span id="prog-txt">${pr.done} / ${pr.total} series</span></div>
+    <div class="prog-wrap"><div class="prog-txt"><span>Progreso de la sesión</span><span><span id="prog-txt">${pr.done} / ${pr.total} series</span> · <span class="sess-time" id="sess-time">${sessTimeTxt(d)}</span></span></div>
       <div class="progress${pr.done === pr.total ? ' ok' : ''}" id="prog-bar"><span style="width:${pr.total ? pr.done / pr.total * 100 : 0}%"></span></div></div>`;
   day.ex.map(eff).forEach(ex => {
     const vsel = ex.vList.length > 1 ? `<select class="set-in" style="font-size:12px;padding:5px;margin-top:6px" data-act="variant" data-ex="${ex.id}" aria-label="Variante">${ex.vList.map((v, i) =>
@@ -1160,7 +1176,7 @@ function renderHistory() {
   list.forEach(se => {
     const day = PLAN.find(d => d.key === se.day); let done = 0, vol = 0;
     se.ex.forEach(e => { const ds = doneSets(e.sets); done += ds.length; vol += statsOf(ds).vol; });
-    h += `<details class="hist-item"><summary><span><b>${fmtDate(se.date)}</b> · ${day ? day.name + ' — ' + esc(day.title) : esc(se.day)}</span><span class="hist-meta">${done}/${day ? totalSets(day) : '?'} series · ${fmtInt(vol)} kg·rep</span></summary><div class="hist-body">`;
+    h += `<details class="hist-item"><summary><span><b>${fmtDate(se.date)}</b> · ${day ? day.name + ' — ' + esc(day.title) : esc(se.day)}</span><span class="hist-meta">${done}/${day ? totalSets(day) : '?'} series${se.durS ? ' · ⏱ ' + fmtDur(se.durS) : ''} · ${fmtInt(vol)} kg·rep</span></summary><div class="hist-body">`;
     se.ex.forEach(e => { const ds = doneSets(e.sets); const ex = EX_BY_ID[e.id];
       h += `<div class="row"><b>${esc(e.vname || (ex ? ex.name : e.name))}</b> — ${ds.length ? ds.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}${num(s.rir) !== null ? ' @' + num(s.rir) : ''}`).join(' · ') : '<span class="hist-meta">sin series completadas</span>'}</div>`; });
     h += `<div style="margin-top:8px"><button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
@@ -1236,7 +1252,13 @@ function onClick(ev) {
       if (num(reps) === null) { toast('Anota las repeticiones de la serie', true); return; }
       s.kg = kg; s.reps = reps;
     }
-    s.done = !s.done; save();
+    s.done = !s.done;
+    // cronómetro de la sesión: empieza con el primer ✓ y se para al completar la última serie
+    if (s.done && !d.startedAt) d.startedAt = Date.now();
+    const prg = draftProgress(day.key);
+    if (prg.done === prg.total) { if (!d.endedAt) d.endedAt = Date.now(); } else d.endedAt = null;
+    if (!prg.done) d.startedAt = null;
+    save();
     if (s.done) autoStart(ex.id);
     const row = document.getElementById(`row-${ex.id}-${i}`);
     if (row) { row.classList.toggle('done', s.done); row.querySelectorAll('input').forEach(inp => { inp.value = s[inp.dataset.f]; }); }
@@ -1249,7 +1271,8 @@ function onClick(ev) {
     const dup = S.sessions.find(x => x.day === day.key && x.date === date);
     if (dup && !confirm(`Ya hay una sesión de ${day.name} guardada el ${fmtDate(date)}. ¿Reemplazarla?`)) return;
     if (dup) S.sessions = S.sessions.filter(x => x !== dup);
-    S.sessions.push({ id: 's' + Date.now().toString(36), date, day: day.key, saved: new Date().toISOString(),
+    const durS = d.startedAt ? Math.round(((d.endedAt || Date.now()) - d.startedAt) / 1000) : null;
+    S.sessions.push({ id: 's' + Date.now().toString(36), date, day: day.key, saved: new Date().toISOString(), durS,
       ex: day.ex.map(eff).map(e => ({ id: e.id, name: e.planName, vname: e.name, sets: d.sets[e.id].map(s => ({ kg: num(s.kg), reps: num(s.reps), rir: num(s.rir), done: !!s.done })) })) });
     delete S.drafts[day.key]; save(); render(); toast('Sesión guardada');
   } else if (act === 'clear-draft') {
