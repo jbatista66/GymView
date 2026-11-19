@@ -35,6 +35,8 @@
   }
   .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px; }
   .header p { color: rgba(255,255,255,0.8); margin-top: 4px; }
+  .sync-pill { display: inline-block; margin-top: 6px; font-size: 11px; padding: 2px 10px; border-radius: 10px; background: rgba(0,0,0,0.25); color: rgba(255,255,255,0.85); }
+  .sync-pill.error { background: rgba(0,0,0,0.45); color: #ffd27f; }
   .diag { margin: 16px; padding: 14px 16px; border-radius: 8px; background: #2a1414;
     border: 1px solid #c0392b; color: #ffd9d4; font-size: 13px; line-height: 1.5; }
   .diag b { color: #fff; display: block; margin-bottom: 4px; }
@@ -313,6 +315,7 @@
 <body>
 <div class="header">
   <h1>GymView</h1>
+  <div id="sync-pill" class="sync-pill off" style="display:none"></div>
 </div>
 <div id="static-plan">
 <input class="wk-radio" type="radio" name="sd" id="sd0" checked>
@@ -574,7 +577,108 @@ function loadState() {
     return normalize(JSON.parse(localStorage.getItem(STORE_KEY) || 'null'));
   } catch (e) { storageOK = false; return blankState(); }
 }
-function save() { if (!storageOK) return; try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { storageOK = false; toast('No se pudo guardar en este navegador', true); } }
+function save() {
+  if (!storageOK) return;
+  try { markDataChange(); localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { storageOK = false; toast('No se pudo guardar en este navegador', true); }
+  scheduleSync();
+}
+
+// =====================================================================
+// NUBE: copia de los datos en un repositorio privado de GitHub (data.json)
+// La clave (token) se guarda aparte, solo en este navegador, y nunca entra en la exportación.
+// Cada subida es un commit, así que el historial del repositorio guarda todas las versiones.
+// =====================================================================
+const CLOUD_KEY = 'gymview.cloud';
+const DATA_FIELDS = ['sessions', 'weights', 'food', 'steps', 'stepGoal', 'targets', 'rest', 'vari', 'varV', 'sound'];
+let CL = { owner:'jbatista66', repo:'GymView-Data', path:'data.json', token:'', sha:null, synced:null, lastSync:null, status:'off', msg:'' };
+let syncT = null, syncBusy = false, syncAgain = false;
+function loadCloud() { try { Object.assign(CL, JSON.parse(localStorage.getItem(CLOUD_KEY) || '{}')); } catch (e) { /* nada */ } if (!CL.token) CL.status = 'off'; }
+function saveCloud() { try { localStorage.setItem(CLOUD_KEY, JSON.stringify(CL)); } catch (e) { /* nada */ } }
+function payloadOf(st) { const o = {}; DATA_FIELDS.forEach(k => { o[k] = st[k]; }); return JSON.stringify(o); }
+function markDataChange() {          // fecha del último cambio real de datos (no de pestañas o temporizador)
+  const p = payloadOf(S);
+  if (S._p !== undefined && S._p !== p) S.dataAt = new Date().toISOString();
+  else if (!S.dataAt && hasAnyData(S)) S.dataAt = new Date().toISOString();
+  Object.defineProperty(S, '_p', { value: p, writable: true, enumerable: false, configurable: true });
+}
+function hasAnyData(st) { return !!(st.sessions.length || st.weights.length || Object.keys(st.steps).length || Object.keys(st.food).length); }
+function b64enc(str) { const b = new TextEncoder().encode(str); let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); }
+function b64dec(b64) { const bin = atob(String(b64).replace(/\s/g, '')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(u); }
+function ghUrl() { return `https://api.github.com/repos/${encodeURIComponent(CL.owner)}/${encodeURIComponent(CL.repo)}/contents/${CL.path}`; }
+function ghHeaders() { return { 'Authorization': 'Bearer ' + CL.token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; }
+function setSync(status, msg) { CL.status = status; CL.msg = msg || ''; if (status === 'ok') CL.lastSync = new Date().toISOString(); saveCloud(); paintSync(); }
+function syncLabel() {
+  if (!CL.token) return '';
+  const t = CL.lastSync ? new Date(CL.lastSync) : null, hm = t ? pad(t.getHours()) + ':' + pad(t.getMinutes()) : '';
+  if (CL.status === 'busy') return '☁ sincronizando…';
+  if (CL.status === 'ok') return payloadOf(S) === CL.synced ? `☁ sincronizado ${hm}` : '☁ pendiente de subir';
+  if (CL.status === 'offline') return '☁ sin conexión · se subirá luego';
+  if (CL.status === 'error') return '☁ error: ' + CL.msg;
+  return '☁ pendiente';
+}
+function paintSync() { const el = document.getElementById('sync-pill'); if (!el) return; const t = syncLabel(); el.textContent = t; el.className = 'sync-pill ' + (CL.token ? CL.status : 'off'); el.style.display = t ? '' : 'none'; }
+async function ghGet() {
+  const r = await fetch(ghUrl() + '?t=' + Date.now(), { headers: ghHeaders(), cache: 'no-store' });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(r.status === 401 ? 'clave no válida o caducada' : (r.status === 403 ? 'sin permiso en el repositorio' : 'GitHub ' + r.status));
+  const j = await r.json(); return { sha: j.sha, data: JSON.parse(b64dec(j.content)) };
+}
+async function ghPut(text, sha) {
+  const d = new Date(), stamp = isoDate(d) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const body = { message: 'GymView ' + stamp, content: b64enc(text) }; if (sha) body.sha = sha;
+  const r = await fetch(ghUrl(), { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, ghHeaders()), body: JSON.stringify(body), keepalive: text.length < 60000 });
+  if (r.status === 409 || r.status === 422) { const e = new Error('conflicto'); e.conflict = true; throw e; }
+  if (!r.ok) throw new Error(r.status === 401 ? 'clave no válida o caducada' : (r.status === 403 || r.status === 404 ? 'sin permiso en el repositorio' : 'GitHub ' + r.status));
+  return (await r.json()).content.sha;
+}
+// Une dos copias sin perder registros: sesiones por id, peso/pasos/nutrición por fecha (gana la copia más reciente)
+function mergeData(local, remote, remoteNewer) {
+  const A = remoteNewer ? local : remote, B = remoteNewer ? remote : local, o = {};
+  const sess = {}; A.sessions.concat(B.sessions).forEach(x => { sess[x.id] = x; }); o.sessions = Object.values(sess);
+  const w = {}; A.weights.concat(B.weights).forEach(x => { w[x.date] = x; }); o.weights = Object.values(w).sort((a, z) => a.date.localeCompare(z.date));
+  o.steps = Object.assign({}, A.steps, B.steps); o.food = Object.assign({}, A.food, B.food);
+  ['stepGoal', 'targets', 'rest', 'vari', 'varV', 'sound'].forEach(k => { o[k] = B[k]; });
+  return o;
+}
+function applyData(d) { const n = normalize(Object.assign({}, S, d)); DATA_FIELDS.forEach(k => { S[k] = n[k]; }); }
+async function syncNow(why) {
+  if (!CL.token || !storageOK) return;
+  if (syncBusy) { syncAgain = true; return; }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { setSync('offline'); return; }
+  syncBusy = true; setSync('busy');
+  try {
+    const remote = await ghGet();
+    const local = payloadOf(S), localChanged = local !== CL.synced;
+    if (!remote) {                                    // primera vez: no hay data.json todavía
+      if (hasAnyData(S) || why === 'connect') { CL.sha = await ghPut(JSON.stringify(Object.assign(JSON.parse(local), { savedAt: S.dataAt || new Date().toISOString() }), null, 1)); CL.synced = local; }
+    } else {
+      const rp = payloadOf(normalize(remote.data)), remoteChanged = remote.sha !== CL.sha && rp !== CL.synced;
+      if (rp === local) { CL.sha = remote.sha; CL.synced = local; }
+      else if (remoteChanged && !localChanged) { applyData(remote.data); CL.sha = remote.sha; CL.synced = payloadOf(S); persistLocal(); render(); toast('Datos actualizados desde la nube'); }
+      else if (localChanged && !remoteChanged) { CL.sha = await ghPut(JSON.stringify(Object.assign(JSON.parse(local), { savedAt: S.dataAt }), null, 1), remote.sha); CL.synced = local; }
+      else {                                          // cambios en los dos lados (o primera conexión de este dispositivo)
+        const remoteNewer = !S.dataAt || (remote.data.savedAt && remote.data.savedAt > S.dataAt);
+        applyData(mergeData(normalize(JSON.parse(local)), normalize(remote.data), remoteNewer));
+        persistLocal(); const merged = payloadOf(S);
+        CL.sha = merged === rp ? remote.sha : await ghPut(JSON.stringify(Object.assign(JSON.parse(merged), { savedAt: new Date().toISOString() }), null, 1), remote.sha);
+        CL.synced = merged; render(); toast('Datos combinados con la nube');
+      }
+    }
+    setSync('ok');
+  } catch (e) {
+    if (e.conflict) syncAgain = true;
+    setSync(e instanceof TypeError ? 'offline' : 'error', e instanceof TypeError ? '' : e.message);
+  } finally {
+    syncBusy = false;
+    if (syncAgain) { syncAgain = false; setTimeout(() => syncNow('retry'), 1500); }
+  }
+}
+function persistLocal() { try { markDataChange(); localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* nada */ } }
+function scheduleSync() {
+  if (!CL.token) return; paintSync();
+  if (payloadOf(S) === CL.synced) return;
+  clearTimeout(syncT); syncT = setTimeout(() => syncNow('save'), 3000);
+}
 
 let S = null;
 
@@ -1061,6 +1165,24 @@ function renderHistory() {
     h += `<div style="margin-top:8px"><button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
   });
   h += `</div>`;
+  // Nube
+  h += `<div class="day-card" id="cloud-card"><div class="day-title tool">Nube (GitHub)</div><div class="day-body">`;
+  if (CL.token) {
+    h += `<div class="hint ${CL.status === 'error' ? '' : 'ok'}">Conectado a <b>${esc(CL.owner)}/${esc(CL.repo)}</b> · ${esc(syncLabel().replace('☁ ', ''))}</div>
+      <div class="kg-meta" style="margin:8px 0">Cada vez que guardas, los datos se suben solos a <code>${esc(CL.path)}</code>. Cada subida queda como un commit con fecha y hora en el historial del repositorio.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="cloud-sync">Sincronizar ahora</button>
+        <button class="btn ghost" data-act="cloud-off">Desconectar este dispositivo</button></div>`;
+  } else {
+    h += `<div class="kg-meta" style="margin-bottom:10px;font-size:11.5px;color:#c7d2dd">Pega aquí tu clave de GitHub (fine-grained token con acceso solo a tu repositorio de datos, permiso Contents: Read and write). Se guarda solo en este dispositivo.</div>
+      <div class="form-row">
+        <label class="field">Usuario<input type="text" id="cl-owner" value="${esc(CL.owner)}" autocapitalize="off" autocomplete="off"></label>
+        <label class="field">Repositorio<input type="text" id="cl-repo" value="${esc(CL.repo)}" autocapitalize="off" autocomplete="off"></label>
+      </div>
+      <label class="field" style="margin-top:10px">Clave (token)<input type="password" id="cl-token" placeholder="github_pat_…" autocapitalize="off" autocomplete="off"></label>
+      <div style="margin-top:10px"><button class="btn" data-act="cloud-connect">Conectar</button></div>
+      ${CL.status === 'error' && CL.msg ? `<div class="hint">Último error: ${esc(CL.msg)}</div>` : ''}`;
+  }
+  h += `</div></div>`;
   // Copia de seguridad
   h += `<div class="day-card"><div class="day-title tool">Copia de seguridad</div><div class="day-body">
     <div class="kg-meta" style="margin-bottom:10px">Los datos se guardan en este navegador. Exporta un archivo de vez en cuando, o para pasarlos a otro dispositivo.</div>
@@ -1194,8 +1316,19 @@ function onClick(ev) {
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   } else if (act === 'import') {
     document.getElementById('imp-file').click();
+  } else if (act === 'cloud-connect') {
+    const tok = document.getElementById('cl-token').value.trim(), ow = document.getElementById('cl-owner').value.trim(), rp = document.getElementById('cl-repo').value.trim();
+    if (!/^(github_pat_|ghp_)\w+$/.test(tok)) { toast('La clave debe empezar por github_pat_', true); return; }
+    if (!ow || !rp) { toast('Indica usuario y repositorio', true); return; }
+    Object.assign(CL, { owner: ow, repo: rp, token: tok, sha: null, synced: null, status: 'busy', msg: '' }); saveCloud();
+    syncNow('connect').then(() => { render(); if (CL.status === 'ok') toast('Conectado a la nube'); else toast('No se pudo conectar: ' + (CL.msg || 'sin conexión'), true); });
+  } else if (act === 'cloud-sync') {
+    syncNow('manual').then(() => { render(); toast(CL.status === 'ok' ? 'Sincronizado' : 'No se pudo sincronizar: ' + (CL.msg || 'sin conexión'), CL.status !== 'ok'); });
+  } else if (act === 'cloud-off') {
+    if (!confirm('¿Desconectar la nube en este dispositivo? Los datos siguen aquí y en GitHub; solo se borra la clave de este dispositivo.')) return;
+    Object.assign(CL, { token: '', sha: null, synced: null, status: 'off', msg: '' }); saveCloud(); render();
   } else if (act === 'wipe') {
-    if (!confirm('¿Borrar TODOS los datos (sesiones, peso, nutrición)? Exporta antes una copia si la quieres conservar.')) return;
+    if (!confirm('¿Borrar TODOS los datos (sesiones, peso, nutrición)?' + (CL.token ? ' También se vaciará la copia de la nube (las versiones anteriores siguen en el historial de GitHub).' : ' Exporta antes una copia si la quieres conservar.'))) return;
     S = blankState(); save(); render(); toast('Datos borrados');
   }
 }
@@ -1233,6 +1366,7 @@ function onChange(ev) {
 function boot() {
   const st = document.getElementById('static-plan'); if (st) st.remove();
   S = loadState();
+  loadCloud(); markDataChange();
   requestPersist();
   if (S.ui.foodDate && S.ui.foodDate !== todayISO()) S.ui.foodDate = null;
   // al abrir la app se muestra el día de hoy
@@ -1242,8 +1376,16 @@ function boot() {
   app.addEventListener('input', onInput);
   app.addEventListener('change', onChange);
   setInterval(tick, 250);
-  document.addEventListener('visibilitychange', tick);
+  document.addEventListener('visibilitychange', () => {
+    tick();
+    if (!CL.token) return;
+    if (document.visibilityState === 'visible') syncNow('open');          // al volver a la app, trae lo último
+    else if (payloadOf(S) !== CL.synced) { clearTimeout(syncT); syncNow('leave'); }   // al salir, sube lo pendiente
+  });
+  window.addEventListener('online', () => { if (CL.token) syncNow('online'); });
   render();
+  paintSync();
+  if (CL.token) syncNow('open');
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.getElementById) {
