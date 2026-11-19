@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Hipertrofia">
+<meta name="apple-mobile-web-app-title" content="GymView">
 <meta name="theme-color" content="#1a1a2e">
-<title>Hipertrofia 5 días — Mi plan de entrenamiento</title>
+<title>GymView</title>
 <style>
   :root {
     --bg: #1a1a2e;
@@ -101,8 +101,29 @@
   .col-ex { min-width: 180px; font-weight: 500; }
   .col-s, .col-r, .col-p { text-align: center; width: 60px; }
   .col-kg { min-width: 180px; }
-  .col-t { width: 80px; }
+  .col-t { width: 80px; text-align: center; }
   .col-n { min-width: 140px; font-size: 11px; }
+  /* cabeceras alineadas igual que sus celdas */
+  .ex-table th.col-s, .ex-table th.col-r, .ex-table th.col-p, .ex-table th.col-t { text-align: center; }
+  .ex-table th, .ex-table td.col-p, .ex-table td.col-r { white-space: nowrap; }
+
+  /* ===== Temporizador de descanso ===== */
+  .tmr { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 5px 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tmr.run { border-color: var(--yellow); color: var(--yellow); box-shadow: 0 0 8px rgba(243,156,18,0.35); }
+  .tmr.end { background: var(--green); border-color: var(--green); color: #fff; }
+  .log-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  #rest-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: none; align-items: center; gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--card); border-top: 2px solid var(--yellow);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.45); }
+  #rest-bar.show { display: flex; }
+  #rest-bar.end { border-top-color: var(--green); background: #143022; }
+  .rb-txt { flex: 1; min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; }
+  .rb-name { display: block; color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rb-time { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--yellow); min-width: 78px; text-align: right; }
+  #rest-bar.end .rb-time { color: var(--green); }
+  body.has-timer { padding-bottom: 84px; }
+  body.has-timer .toast { bottom: 100px; }
   .num { text-align: right; white-space: nowrap; }
 
   .kg-val { font-weight: 700; color: var(--yellow); font-size: 14px; }
@@ -225,7 +246,6 @@
     .day-card { margin-bottom: 14px; }
     .day-title { padding: 10px 12px; font-size: 14px; }
     .ex-table { font-size: 11px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .ex-table thead, .ex-table tbody, .ex-table tr { display: table; width: 100%; table-layout: auto; }
     .col-ex { min-width: 110px; font-size: 11px; }
     .col-s, .col-r, .col-p { width: 40px; font-size: 11px; }
     .col-kg { min-width: 140px; }
@@ -281,8 +301,7 @@
 </head>
 <body>
 <div class="header">
-  <h1>HIPERTROFIA<sup>5</sup>DÍAS — Mi plan de entrenamiento</h1>
-  <p>Pecho · Espalda · Pierna · Hombros · Brazos — objetivo 80 kg — prioridad bíceps y tríceps</p>
+  <h1>GymView</h1>
 </div>
 <div id="static-plan">
 <input class="wk-radio" type="radio" name="sd" id="sd0" checked>
@@ -296,23 +315,24 @@
 <div class="weeks"><div class="week-content" id="sday-0"><div class="week-header"><h2>Lunes — Pecho + espalda (pesado) + bíceps</h2></div><div class="week-sub">17 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
-  </tr></thead><tbody><tr><td class="col-ex">Press banca con barra</td><td class="col-s">4</td><td class="col-r">4–6</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-triceps sec">Tríceps</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Remo con barra Pendlay</td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">40 kg</span><span class="kg-meta">GymBook 29/09/2026: Barbell Rows 40 kg × 6</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press inclinado con mancuernas</td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">24 kg</span><span class="unit-badge">/mano</span><span class="kg-meta">GymBook 07/10/2026: Incline Dumbbell Bench Presses 24 kg × 8</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-hombro sec">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Dominadas lastradas (o jalón si hace falta)<span class="kg-meta note-text">Peso = lastre (0 = peso corporal).</span></td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">PC</span><span class="kg-meta">GymBook 17/10/2026: Chin-Ups peso corporal × 9</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press militar con barra</td><td class="col-s">2</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Curl de bíceps con barra EZ</td><td class="col-s">2</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-1"><div class="week-header"><h2>Martes — Pierna completa (pesada)</h2></div><div class="week-sub">14 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
+  </tr></thead><tbody><tr><td class="col-ex">Press de pecho en máquina<span class="kg-meta">En el plan: Press banca con barra</span></td><td class="col-s">4</td><td class="col-r">4–6</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-triceps sec">Tríceps</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Remo con barra Pendlay</td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press inclinado con mancuernas</td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-hombro sec">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Dominadas lastradas (o jalón si hace falta)<span class="kg-meta note-text">Peso = lastre (0 = peso corporal).</span></td><td class="col-s">3</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press de hombro en máquina<span class="kg-meta">En el plan: Press militar con barra</span></td><td class="col-s">2</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Curl de bíceps con mancuernas (alterno)<span class="kg-meta">En el plan: Curl de bíceps con barra EZ</span></td><td class="col-s">2</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-1"><div class="week-header"><h2>Martes — Pierna completa (pesada)</h2></div><div class="week-sub">14 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
-  </tr></thead><tbody><tr><td class="col-ex">Sentadilla libre trasera</td><td class="col-s">4</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Prensa 45°</td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">160 kg</span><span class="kg-meta">GymBook 14/10/2026: Leg Presses 160 kg × 10</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Peso muerto rumano</td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">17,5 kg</span><span class="unit-badge">/mano</span><span class="kg-meta">GymBook 14/10/2026: Dumbbell Romanian Deadlifts 17,5 kg × 12 (con mancuernas)</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-isquios">Isquios</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Gemelos en prensa</td><td class="col-s">4</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-gemelo">Gemelo</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-2"><div class="week-header"><h2>Miércoles — Descanso</h2></div><div class="day-card"><div class="day-title rest">Miércoles — Descanso</div><div class="day-body">Descanso completo o actividad suave opcional (paseo y movilidad).</div></div></div><div class="week-content" id="sday-3"><div class="week-header"><h2>Jueves — Pecho + espalda (volumen) + tríceps</h2></div><div class="week-sub">16 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
+  </tr></thead><tbody><tr><td class="col-ex">Sentadilla hack en máquina<span class="kg-meta">En el plan: Sentadilla libre trasera</span></td><td class="col-s">4</td><td class="col-r">6–8</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Prensa 45°</td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Peso muerto rumano con mancuernas<span class="kg-meta">En el plan: Peso muerto rumano</span></td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-isquios">Isquios</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Gemelos sentado en máquina<span class="kg-meta">En el plan: Gemelos en prensa</span></td><td class="col-s">4</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-gemelo">Gemelo</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-2"><div class="week-header"><h2>Miércoles — Descanso</h2></div><div class="day-card"><div class="day-title rest">Miércoles — Descanso</div><div class="day-body">Descanso completo o actividad suave opcional (paseo y movilidad).</div></div></div><div class="week-content" id="sday-3"><div class="week-header"><h2>Jueves — Pecho + espalda (volumen) + tríceps</h2></div><div class="week-sub">16 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
-  </tr></thead><tbody><tr><td class="col-ex">Press inclinado con barra</td><td class="col-s">3</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-hombro sec">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Remo T-Bar</td><td class="col-s">3</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press plano con mancuernas</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">28 kg</span><span class="unit-badge">/mano</span><span class="kg-meta">GymBook 07/10/2026: Dumbbell Bench Presses 28 kg × 8</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-triceps sec">Tríceps</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Jalón al pecho con agarre neutro</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Peck deck o aperturas en polea</td><td class="col-s">2</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span></td></tr><tr><td class="col-ex">Extensión de tríceps en polea</td><td class="col-s">2</td><td class="col-r">10–15</td><td class="col-kg"><span class="kg-val kg-hold">20 kg</span><span class="kg-meta">GymBook 15/10/2026: Push-Downs 20 kg × 10 (con cuerda)</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-4"><div class="week-header"><h2>Viernes — Pierna (hipertrofia)</h2></div><div class="week-sub">13 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
+  </tr></thead><tbody><tr><td class="col-ex">Press inclinado en multipower<span class="kg-meta">En el plan: Press inclinado con barra</span></td><td class="col-s">3</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-hombro sec">Hombro</span><span class="mtag m-triceps sec">Tríceps</span></td></tr><tr><td class="col-ex">Remo sentado en máquina<span class="kg-meta">En el plan: Remo T-Bar</span></td><td class="col-s">3</td><td class="col-r">8–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Press plano con mancuernas</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span><span class="mtag m-triceps sec">Tríceps</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Jalón a una mano (agarre neutro)<span class="kg-meta">En el plan: Jalón al pecho con agarre neutro</span></td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-espalda">Espalda</span><span class="mtag m-biceps sec">Bíceps</span></td></tr><tr><td class="col-ex">Peck deck o aperturas en polea</td><td class="col-s">2</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-pecho">Pecho</span></td></tr><tr><td class="col-ex">Extensión de tríceps en polea</td><td class="col-s">2</td><td class="col-r">10–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-4"><div class="week-header"><h2>Viernes — Pierna (hipertrofia)</h2></div><div class="week-sub">13 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
-  </tr></thead><tbody><tr><td class="col-ex">Sentadilla búlgara</td><td class="col-s">3</td><td class="col-r">10–12 por pierna</td><td class="col-kg"><span class="kg-val kg-hold">17,5 kg</span><span class="unit-badge">/mano</span><span class="kg-meta">GymBook 14/10/2026: Dumbbell Bulgarian Split Squats 17,5 kg × 8</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Extensiones de cuádriceps</td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span></td></tr><tr><td class="col-ex">Curl femoral tumbado</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">15 kg</span><span class="unit-badge">/pierna</span><span class="kg-meta">GymBook 06/10/2026: Lying One-Leg Leg Curls 15 kg × 12 (a una pierna)</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-isquios">Isquios</span></td></tr><tr><td class="col-ex">Gemelos de pie</td><td class="col-s">4</td><td class="col-r">15–20</td><td class="col-kg"><span class="kg-val kg-hold">120 kg</span><span class="kg-meta">GymBook 06/10/2026: Standing Machine Calf Raises 120 kg × 10</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-gemelo">Gemelo</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-5"><div class="week-header"><h2>Sábado — Hombros + brazos</h2></div><div class="week-sub">18 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
+  </tr></thead><tbody><tr><td class="col-ex">Sentadilla búlgara</td><td class="col-s">3</td><td class="col-r">10–12 por pierna</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span><span class="mtag m-gluteo sec">Glúteo</span></td></tr><tr><td class="col-ex">Extensión de cuádriceps a una pierna<span class="kg-meta">En el plan: Extensiones de cuádriceps</span></td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-cuadriceps">Cuádriceps</span></td></tr><tr><td class="col-ex">Curl femoral tumbado a una pierna<span class="kg-meta">En el plan: Curl femoral tumbado</span></td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-isquios">Isquios</span></td></tr><tr><td class="col-ex">Gemelos de pie</td><td class="col-s">4</td><td class="col-r">15–20</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-gemelo">Gemelo</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-5"><div class="week-header"><h2>Sábado — Hombros + brazos</h2></div><div class="week-sub">18 series</div><div class="day-card"><div class="day-title">Plan del día</div><table class="ex-table"><thead><tr>
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
-  </tr></thead><tbody><tr><td class="col-ex">Elevaciones laterales en polea</td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">7,5 kg</span><span class="unit-badge">/brazo</span><span class="kg-meta">GymBook 15/10/2026: Low Cable One-Arm Lateral Raises 7,5 kg × 9</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span></td></tr><tr><td class="col-ex">Pájaros en máquina (aperturas inversas / reverse pec deck)</td><td class="col-s">3</td><td class="col-r">15</td><td class="col-kg"><span class="kg-val kg-hold">15 kg</span><span class="kg-meta">GymBook 13/10/2026: Reverse Machine Flys 15 kg × 8</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span><span class="mtag m-espalda sec">Espalda</span></td></tr><tr><td class="col-ex">Curl de bíceps inclinado</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">14 kg</span><span class="unit-badge">/mano</span><span class="kg-meta">GymBook 13/10/2026: Alternating Incline Dumbbell Twist Curls 14 kg × 8</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span></td></tr><tr><td class="col-ex">Fondos en paralelas<span class="kg-meta note-text">Peso = lastre (0 = peso corporal).</span></td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span><span class="mtag m-pecho sec">Pecho</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Curl martillo con cuerda</td><td class="col-s">3</td><td class="col-r">12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span><span class="mtag m-antebrazo sec">Antebrazo</span></td></tr><tr><td class="col-ex">Extensión de tríceps en polea alta</td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">20 kg</span><span class="kg-meta">GymBook 15/10/2026: Push-Downs 20 kg × 10</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-6"><div class="week-header"><h2>Domingo — Descanso</h2></div><div class="day-card"><div class="day-title rest">Domingo — Descanso</div><div class="day-body">Descanso.</div></div></div></div>
+  </tr></thead><tbody><tr><td class="col-ex">Elevaciones laterales en polea</td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span></td></tr><tr><td class="col-ex">Pájaros en máquina (aperturas inversas / reverse pec deck)</td><td class="col-s">3</td><td class="col-r">15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-hombro">Hombro</span><span class="mtag m-espalda sec">Espalda</span></td></tr><tr><td class="col-ex">Curl de bíceps inclinado</td><td class="col-s">3</td><td class="col-r">10–12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span></td></tr><tr><td class="col-ex">Fondos en paralelas<span class="kg-meta note-text">Peso = lastre (0 = peso corporal).</span></td><td class="col-s">3</td><td class="col-r">8–10</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–3</span></td><td class="col-p">2–3 min</td><td class="col-t"><code>1–3</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span><span class="mtag m-pecho sec">Pecho</span><span class="mtag m-hombro sec">Hombro</span></td></tr><tr><td class="col-ex">Curl martillo con mancuernas (alterno)<span class="kg-meta">En el plan: Curl martillo con cuerda</span></td><td class="col-s">3</td><td class="col-r">12</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-biceps prio">★ Bíceps</span><span class="mtag m-antebrazo sec">Antebrazo</span></td></tr><tr><td class="col-ex">Extensión de tríceps en polea alta</td><td class="col-s">3</td><td class="col-r">12–15</td><td class="col-kg"><span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR 1–2</span></td><td class="col-p">60–120 s</td><td class="col-t"><code>1–2</code></td><td class="col-n"><span class="mtag m-triceps prio">★ Tríceps</span></td></tr></tbody></table></div></div><div class="week-content" id="sday-6"><div class="week-header"><h2>Domingo — Descanso</h2></div><div class="day-card"><div class="day-title rest">Domingo — Descanso</div><div class="day-body">Descanso.</div></div></div></div>
 <div class="diag"><b>Versión de solo lectura.</b>El registro de series, historial, peso y nutrición necesitan JavaScript. Abre el archivo en Safari o Chrome.</div>
 </div>
 <div id="app"></div>
 <div id="toast" class="toast"></div>
+<div id="rest-bar" role="timer" aria-live="polite"></div>
 <script>
 // =====================================================================
 // PLAN — fuente: Plan_entrenamiento_hipertrofia_80kg.docx (17.11.2026)
@@ -320,7 +340,6 @@
 // kind: C = compuesto (2–3 min, 1–3 RIR) · A = aislamiento (60–120 s, 1–2 RIR)  [doc, sección 10]
 // prim = músculo trabajado de forma directa · sec = trabajo indirecto
 // inc = salto de carga sugerido para "aumentar ligeramente" (progresión doble, doc sección 10)
-// ref = último registro comparable en GymBook-Logs-2026-10-17.csv (solo punto de partida)
 // =====================================================================
 const C = 'C', A = 'A';
 const PRIORITY = ['Bíceps', 'Tríceps'];
@@ -329,22 +348,17 @@ const MUSCLES = ['Pecho', 'Espalda', 'Hombro', 'Bíceps', 'Tríceps', 'Cuádrice
 const PLAN = [
   { key:'lun', dow:1, name:'Lunes', short:'LUN', tab:'Pecho · Espalda', title:'Pecho + espalda (pesado) + bíceps', type:'train', ex:[
     { id:'lun-banca', name:'Press banca con barra', sets:4, reps:'4–6', kind:C, prim:'Pecho', sec:['Tríceps','Hombro'], inc:2.5 },
-    { id:'lun-pendlay', name:'Remo con barra Pendlay', sets:3, reps:'6–8', kind:C, prim:'Espalda', sec:['Bíceps'], inc:2.5,
-      ref:{ src:'Barbell Rows', w:40, r:6, d:'2026-09-29' } },
-    { id:'lun-incmanc', name:'Press inclinado con mancuernas', sets:3, reps:'6–8', kind:C, prim:'Pecho', sec:['Hombro','Tríceps'], inc:1, unit:'/mano',
-      ref:{ src:'Incline Dumbbell Bench Presses', w:24, r:8, d:'2026-10-07' } },
+    { id:'lun-pendlay', name:'Remo con barra Pendlay', sets:3, reps:'6–8', kind:C, prim:'Espalda', sec:['Bíceps'], inc:2.5 },
+    { id:'lun-incmanc', name:'Press inclinado con mancuernas', sets:3, reps:'6–8', kind:C, prim:'Pecho', sec:['Hombro','Tríceps'], inc:1, unit:'/mano' },
     { id:'lun-dominadas', name:'Dominadas lastradas (o jalón si hace falta)', sets:3, reps:'6–8', kind:C, prim:'Espalda', sec:['Bíceps'], inc:2.5, bw:true,
-      note:'Peso = lastre (0 = peso corporal).',
-      ref:{ src:'Chin-Ups', w:0, r:9, d:'2026-10-17', bw:true } },
+      note:'Peso = lastre (0 = peso corporal).' },
     { id:'lun-militar', name:'Press militar con barra', sets:2, reps:'6–8', kind:C, prim:'Hombro', sec:['Tríceps'], inc:2.5 },
     { id:'lun-curlez', name:'Curl de bíceps con barra EZ', sets:2, reps:'8–12', kind:A, prim:'Bíceps', sec:[], inc:2.5 }
   ]},
   { key:'mar', dow:2, name:'Martes', short:'MAR', tab:'Pierna', title:'Pierna completa (pesada)', type:'train', ex:[
     { id:'mar-sentadilla', name:'Sentadilla libre trasera', sets:4, reps:'6–8', kind:C, prim:'Cuádriceps', sec:['Glúteo'], inc:2.5 },
-    { id:'mar-prensa', name:'Prensa 45°', sets:3, reps:'8–10', kind:C, prim:'Cuádriceps', sec:['Glúteo'], inc:5,
-      ref:{ src:'Leg Presses', w:160, r:10, d:'2026-10-14' } },
-    { id:'mar-rdl', name:'Peso muerto rumano', sets:3, reps:'8–10', kind:C, prim:'Isquios', sec:['Glúteo'], inc:2.5,
-      ref:{ src:'Dumbbell Romanian Deadlifts', w:17.5, r:12, d:'2026-10-14', unit:'/mano', variant:'con mancuernas' } },
+    { id:'mar-prensa', name:'Prensa 45°', sets:3, reps:'8–10', kind:C, prim:'Cuádriceps', sec:['Glúteo'], inc:5 },
+    { id:'mar-rdl', name:'Peso muerto rumano', sets:3, reps:'8–10', kind:C, prim:'Isquios', sec:['Glúteo'], inc:2.5 },
     { id:'mar-gemprensa', name:'Gemelos en prensa', sets:4, reps:'10–12', kind:A, prim:'Gemelo', sec:[], inc:5 }
   ]},
   { key:'mie', dow:3, name:'Miércoles', short:'MIÉ', tab:'Descanso', title:'Descanso', type:'rest',
@@ -352,34 +366,25 @@ const PLAN = [
   { key:'jue', dow:4, name:'Jueves', short:'JUE', tab:'Pecho · Espalda', title:'Pecho + espalda (volumen) + tríceps', type:'train', ex:[
     { id:'jue-incbarra', name:'Press inclinado con barra', sets:3, reps:'8–12', kind:C, prim:'Pecho', sec:['Hombro','Tríceps'], inc:2.5 },
     { id:'jue-tbar', name:'Remo T-Bar', sets:3, reps:'8–12', kind:C, prim:'Espalda', sec:['Bíceps'], inc:2.5 },
-    { id:'jue-planomanc', name:'Press plano con mancuernas', sets:3, reps:'10–12', kind:C, prim:'Pecho', sec:['Tríceps','Hombro'], inc:1, unit:'/mano',
-      ref:{ src:'Dumbbell Bench Presses', w:28, r:8, d:'2026-10-07' } },
+    { id:'jue-planomanc', name:'Press plano con mancuernas', sets:3, reps:'10–12', kind:C, prim:'Pecho', sec:['Tríceps','Hombro'], inc:1, unit:'/mano' },
     { id:'jue-jalon', name:'Jalón al pecho con agarre neutro', sets:3, reps:'10–12', kind:C, prim:'Espalda', sec:['Bíceps'], inc:2.5 },
     { id:'jue-peck', name:'Peck deck o aperturas en polea', sets:2, reps:'12–15', kind:A, prim:'Pecho', sec:[], inc:2.5 },
-    { id:'jue-exttri', name:'Extensión de tríceps en polea', sets:2, reps:'10–15', kind:A, prim:'Tríceps', sec:[], inc:2.5,
-      ref:{ src:'Push-Downs', w:20, r:10, d:'2026-10-15', variant:'con cuerda' } }
+    { id:'jue-exttri', name:'Extensión de tríceps en polea', sets:2, reps:'10–15', kind:A, prim:'Tríceps', sec:[], inc:2.5 }
   ]},
   { key:'vie', dow:5, name:'Viernes', short:'VIE', tab:'Pierna', title:'Pierna (hipertrofia)', type:'train', ex:[
-    { id:'vie-bulgara', name:'Sentadilla búlgara', sets:3, reps:'10–12 por pierna', kind:C, prim:'Cuádriceps', sec:['Glúteo'], inc:1,
-      ref:{ src:'Dumbbell Bulgarian Split Squats', w:17.5, r:8, d:'2026-10-14', unit:'/mano' } },
+    { id:'vie-bulgara', name:'Sentadilla búlgara', sets:3, reps:'10–12 por pierna', kind:C, prim:'Cuádriceps', sec:['Glúteo'], inc:1 },
     { id:'vie-extcuad', name:'Extensiones de cuádriceps', sets:3, reps:'12–15', kind:A, prim:'Cuádriceps', sec:[], inc:2.5 },
-    { id:'vie-femoral', name:'Curl femoral tumbado', sets:3, reps:'10–12', kind:A, prim:'Isquios', sec:[], inc:2.5,
-      ref:{ src:'Lying One-Leg Leg Curls', w:15, r:12, d:'2026-10-06', unit:'/pierna', variant:'a una pierna' } },
-    { id:'vie-gemelos', name:'Gemelos de pie', sets:4, reps:'15–20', kind:A, prim:'Gemelo', sec:[], inc:5,
-      ref:{ src:'Standing Machine Calf Raises', w:120, r:10, d:'2026-10-06' } }
+    { id:'vie-femoral', name:'Curl femoral tumbado', sets:3, reps:'10–12', kind:A, prim:'Isquios', sec:[], inc:2.5 },
+    { id:'vie-gemelos', name:'Gemelos de pie', sets:4, reps:'15–20', kind:A, prim:'Gemelo', sec:[], inc:5 }
   ]},
   { key:'sab', dow:6, name:'Sábado', short:'SÁB', tab:'Hombro · Brazo', title:'Hombros + brazos', type:'train', ex:[
-    { id:'sab-laterales', name:'Elevaciones laterales en polea', sets:3, reps:'12–15', kind:A, prim:'Hombro', sec:[], inc:1,
-      ref:{ src:'Low Cable One-Arm Lateral Raises', w:7.5, r:9, d:'2026-10-15', unit:'/brazo' } },
-    { id:'sab-pajaros', name:'Pájaros en máquina (aperturas inversas / reverse pec deck)', sets:3, reps:'15', kind:A, prim:'Hombro', sec:['Espalda'], inc:2.5,
-      ref:{ src:'Reverse Machine Flys', w:15, r:8, d:'2026-10-13' } },
-    { id:'sab-curlinc', name:'Curl de bíceps inclinado', sets:3, reps:'10–12', kind:A, prim:'Bíceps', sec:[], inc:1,
-      ref:{ src:'Alternating Incline Dumbbell Twist Curls', w:14, r:8, d:'2026-10-13', unit:'/mano' } },
+    { id:'sab-laterales', name:'Elevaciones laterales en polea', sets:3, reps:'12–15', kind:A, prim:'Hombro', sec:[], inc:1 },
+    { id:'sab-pajaros', name:'Pájaros en máquina (aperturas inversas / reverse pec deck)', sets:3, reps:'15', kind:A, prim:'Hombro', sec:['Espalda'], inc:2.5 },
+    { id:'sab-curlinc', name:'Curl de bíceps inclinado', sets:3, reps:'10–12', kind:A, prim:'Bíceps', sec:[], inc:1 },
     { id:'sab-fondos', name:'Fondos en paralelas', sets:3, reps:'8–10', kind:C, prim:'Tríceps', sec:['Pecho','Hombro'], inc:2.5, bw:true,
       note:'Peso = lastre (0 = peso corporal).' },
     { id:'sab-martillo', name:'Curl martillo con cuerda', sets:3, reps:'12', kind:A, prim:'Bíceps', sec:['Antebrazo'], inc:2.5 },
-    { id:'sab-exttri', name:'Extensión de tríceps en polea alta', sets:3, reps:'12–15', kind:A, prim:'Tríceps', sec:[], inc:2.5,
-      ref:{ src:'Push-Downs', w:20, r:10, d:'2026-10-15' } }
+    { id:'sab-exttri', name:'Extensión de tríceps en polea alta', sets:3, reps:'12–15', kind:A, prim:'Tríceps', sec:[], inc:2.5 }
   ]},
   { key:'dom', dow:0, name:'Domingo', short:'DOM', tab:'Descanso', title:'Descanso', type:'rest', text:'Descanso.' }
 ];
@@ -397,6 +402,62 @@ const GUIDE = [
 const ARMS_NOTE = 'Bíceps: 8 series directas/semana (2 el lunes + 6 el sábado). Tríceps: 8 series directas/semana (2 el jueves + 6 el sábado). Además, reciben trabajo indirecto con remos, dominadas y presses. Ajustar según progreso y recuperación.';
 const REF_PROFILE = { age:31, heightCm:190, refKg:74 };
 const DEFAULT_TARGETS = { goalKg:80, kcal:3000, prot:150, fat:80, carb:420 };
+
+// ===== VARIANTES QUE SÍ HACES =====
+// Mismas series y repeticiones que el plan; solo cambia el aparato. def:true = variante por defecto,
+// elegida porque es el aparato que usas habitualmente.
+// Cambiable en cada ejercicio (selector "Variante"). El índice 0 es siempre el ejercicio del documento.
+const ALTS = {
+  'lun-banca': [
+    { name:'Press de pecho en máquina', inc:2.5, def:true },
+    { name:'Press banca en multipower', inc:2.5 } ],
+  'lun-militar': [
+    { name:'Press de hombro en máquina', inc:2.5, def:true },
+    { name:'Press de hombro con mancuernas', unit:'/mano', inc:1 } ],
+  'lun-curlez': [
+    { name:'Curl de bíceps con mancuernas (alterno)', unit:'/mano', inc:1, def:true },
+    { name:'Curl predicador con mancuernas', unit:'/mano', inc:1 },
+    { name:'Curl en polea baja a una mano', unit:'/brazo', inc:1 } ],
+  'mar-sentadilla': [
+    { name:'Sentadilla hack en máquina', inc:5, def:true },
+    { name:'Sentadilla en multipower', inc:2.5 } ],
+  'mar-rdl': [
+    { name:'Peso muerto rumano con mancuernas', unit:'/mano', inc:1, def:true } ],
+  'mar-gemprensa': [
+    { name:'Gemelos sentado en máquina', inc:5, def:true } ],
+  'jue-incbarra': [
+    { name:'Press inclinado en multipower', inc:2.5, def:true } ],
+  'jue-tbar': [
+    { name:'Remo sentado en máquina', inc:2.5, def:true },
+    { name:'Remo sentado en polea', inc:2.5 } ],
+  'jue-jalon': [
+    { name:'Jalón a una mano (agarre neutro)', unit:'/brazo', inc:2.5, def:true },
+    { name:'Jalón al pecho agarre ancho', inc:2.5 } ],
+  'jue-peck': [
+    { name:'Aperturas con mancuernas', unit:'/mano', inc:1 },
+    { name:'Aperturas inclinadas con mancuernas', unit:'/mano', inc:1 } ],
+  'vie-extcuad': [
+    { name:'Extensión de cuádriceps a una pierna', unit:'/pierna', inc:2.5, def:true } ],
+  'vie-femoral': [
+    { name:'Curl femoral tumbado a una pierna', unit:'/pierna', inc:2.5, def:true },
+    { name:'Curl femoral sentado', inc:2.5 } ],
+  'sab-martillo': [
+    { name:'Curl martillo con mancuernas (alterno)', unit:'/mano', inc:1, def:true } ],
+  'sab-exttri': [
+    { name:'Extensión de tríceps a una mano en polea alta', unit:'/brazo', inc:1 } ]
+};
+function variantsOf(ex) {
+  return [{ name:ex.name, unit:ex.unit || '', inc:ex.inc, plan:true }]
+    .concat((ALTS[ex.id] || []).map(a => Object.assign({ unit:'' }, a)));
+}
+function defaultVariant(id) { const i = (ALTS[id] || []).findIndex(a => a.def); return i < 0 ? 0 : i + 1; }
+function eff(ex) {          // ejercicio tal como lo haces: variante elegida, mismas series/reps
+  const list = variantsOf(ex);
+  let i = (S && S.vari && S.vari[ex.id] !== undefined) ? S.vari[ex.id] : defaultVariant(ex.id);
+  if (!list[i]) i = 0;
+  const v = list[i];
+  return Object.assign({}, ex, { name:v.name, unit:v.unit, inc:v.inc, planName:ex.name, vIdx:i, vList:list });
+}
 
 // ===== Utilidades =====
 const EX_BY_ID = {};
@@ -452,27 +513,17 @@ function planTableHtml(day, suggestFn) {
     <th class="col-ex">Ejercicio</th><th class="col-s">Series</th><th class="col-r">Reps</th>
     <th class="col-kg">Peso</th><th class="col-p">Descanso</th><th class="col-t">RIR</th><th class="col-n">Músculo</th>
   </tr></thead><tbody>`;
-  day.ex.forEach(ex => {
+  day.ex.map(eff).forEach(ex => {
     const s = suggestFn(ex);
-    const noteStr = ex.note ? `<span class="kg-meta note-text">${esc(ex.note)}</span>` : '';
+    const noteStr = (ex.vIdx ? `<span class="kg-meta">En el plan: ${esc(ex.planName)}</span>` : '') + (ex.note ? `<span class="kg-meta note-text">${esc(ex.note)}</span>` : '');
     h += `<tr><td class="col-ex">${esc(ex.name)}${noteStr}</td><td class="col-s">${ex.sets}</td><td class="col-r">${esc(ex.reps)}</td>`
       + `<td class="col-kg">${s}</td><td class="col-p">${restOf(ex)}</td><td class="col-t"><code>${rirOf(ex)}</code></td>`
       + `<td class="col-n">${tagsOf(ex)}</td></tr>`;
   });
   return h + `</tbody></table>`;
 }
-function refText(ex, today) {
-  const r = ex.ref; if (!r) return '';
-  const age = daysBetween(r.d, today);
-  const unit = r.unit || ex.unit || '';
-  const set = r.bw ? `peso corporal × ${r.r}` : `${fmtKg(r.w)} kg × ${r.r}`;
-  return { set, unit, age, txt: `GymBook ${fmtDate(r.d)}: ${esc(r.src)} ${set}${r.variant ? ' (' + esc(r.variant) + ')' : ''}` };
-}
 function staticSuggest(ex) {
-  const t = refText(ex, BUILD_DATE);
-  if (!t) return `<span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR ${rirOf(ex)}</span>`;
-  return `<span class="kg-val kg-hold">${ex.ref.bw ? 'PC' : fmtKg(ex.ref.w) + ' kg'}</span>${t.unit ? `<span class="unit-badge">${t.unit}</span>` : ''}`
-    + `<span class="kg-meta">${t.txt}</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR ${rirOf(ex)}</span>`;
+  return `<span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR ${rirOf(ex)}</span>`;
 }
 const BUILD_DATE = '2026-11-17';
 
@@ -481,29 +532,29 @@ const BUILD_DATE = '2026-11-17';
 // =====================================================================
 const STORE_KEY = 'hipertrofia5.v1';
 let storageOK = true;
-// Equivalencias propuestas ejercicio del plan → nombre del ejercicio en GymBook (editables en Historial).
-// Vacío = GymBook no tiene ese ejercicio. Las variantes con otra escala (mancuerna por mano, una pierna) se marcan con *.
-const DEFAULT_GB_MAP = {
-  'lun-banca':'Barbell Bench Presses', 'lun-pendlay':'Barbell Rows', 'lun-incmanc':'Incline Dumbbell Bench Presses',
-  'lun-dominadas':'Chin-Ups', 'lun-militar':'Standing Barbell Front Presses', 'lun-curlez':'',
-  'mar-sentadilla':'Barbell Squats', 'mar-prensa':'Leg Presses', 'mar-rdl':'', 'mar-gemprensa':'',
-  'jue-incbarra':'Incline Barbell Bench Presses', 'jue-tbar':'T-Bar Rows', 'jue-planomanc':'Dumbbell Bench Presses',
-  'jue-jalon':'Machine Lat Pull-Downs', 'jue-peck':'Machine Flys', 'jue-exttri':'Push-Downs',
-  'vie-bulgara':'Dumbbell Bulgarian Split Squats', 'vie-extcuad':'Leg Extensions', 'vie-femoral':'Lying Leg Curls', 'vie-gemelos':'Standing Machine Calf Raises',
-  'sab-laterales':'Low Cable One-Arm Lateral Raises', 'sab-pajaros':'Reverse Machine Flys', 'sab-curlinc':'Alternating Incline Dumbbell Twist Curls',
-  'sab-fondos':'Parallel Bar Dips', 'sab-martillo':'', 'sab-exttri':'Push-Downs'
-};
-function blankState() { return { sessions:[], drafts:{}, weights:[], food:{}, targets:Object.assign({}, DEFAULT_TARGETS), ui:{ tab:null, cmpEx:null },
-  gb:null, gbMap:Object.assign({}, DEFAULT_GB_MAP) }; }
+// Variante por defecto de cada ejercicio
+function defaultVari() { const o = {}; Object.keys(EX_BY_ID).forEach(id => { o[id] = defaultVariant(id); }); return o; }
+const VARIANTS_VERSION = 1;
+const DEFAULT_STEP_GOAL = 10000;     // mínimo diario
+const BACKUP_DAYS = 7;               // aviso de copia de seguridad
+function blankState() { return { sessions:[], drafts:{}, weights:[], food:{}, steps:{}, stepGoal:DEFAULT_STEP_GOAL, lastExport:null, rest:{}, timer:null, targets:Object.assign({}, DEFAULT_TARGETS), ui:{ tab:null, cmpEx:null },
+  vari:defaultVari(), varV:VARIANTS_VERSION, sound:false }; }
 function normalize(s) {
   const b = blankState();
   if (!s || typeof s !== 'object') return b;
-  if (s.gb && s.gb.ex && typeof s.gb.ex === 'object') b.gb = s.gb;
-  b.gbMap = Object.assign({}, DEFAULT_GB_MAP, s.gbMap || {});
+  if (s.varV === VARIANTS_VERSION) {           // datos guardados con variantes: respeta lo elegido
+    b.vari = Object.assign(b.vari, s.vari || {});
+  }                                             // datos anteriores: se aplican las variantes nuevas por defecto
   b.sessions = Array.isArray(s.sessions) ? s.sessions.filter(x => x && x.day && x.date && Array.isArray(x.ex)) : [];
   b.drafts = s.drafts && typeof s.drafts === 'object' ? s.drafts : {};
   b.weights = Array.isArray(s.weights) ? s.weights.filter(w => w && w.date && num(w.kg) !== null).map(w => ({ date:String(w.date), kg:num(w.kg) })) : [];
   b.food = s.food && typeof s.food === 'object' ? s.food : {};
+  if (s.steps && typeof s.steps === 'object') Object.keys(s.steps).forEach(d => { const v = num(s.steps[d]); if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v !== null) b.steps[d] = v; });
+  if ('stepGoal' in s) b.stepGoal = num(s.stepGoal);   // null = lo quitaste a propósito
+  b.sound = s.sound === true;
+  b.lastExport = typeof s.lastExport === 'string' ? s.lastExport : null;
+  if (s.rest && typeof s.rest === 'object') Object.keys(s.rest).forEach(k => { const v = num(s.rest[k]); if (v && v > 0) b.rest[k] = v; });
+  if (s.timer && typeof s.timer.end === 'number' && EX_BY_ID[s.timer.ex]) b.timer = s.timer;
   b.targets = Object.assign({}, DEFAULT_TARGETS, s.targets || {});
   b.ui = Object.assign(b.ui, s.ui || {});
   b.weights.sort((a, z) => a.date.localeCompare(z.date));
@@ -522,68 +573,13 @@ let S = null;
 // ===== Historial por ejercicio =====
 function doneSets(sets) { return (sets || []).filter(s => s && s.done && num(s.reps) !== null); }
 function sessionsSorted() { return S.sessions.slice().sort((a, b) => (b.date + b.saved).localeCompare(a.date + a.saved)); }
-function exHistory(exId) {          // más reciente primero · app + GymBook (si hay equivalencia)
-  const out = [], seen = new Set();
-  sessionsSorted().forEach(se => { const e = se.ex.find(x => x.id === exId); if (e) { const d = doneSets(e.sets); if (d.length) { out.push({ date:se.date, sid:se.id, sets:d, src:'app' }); seen.add(se.date); } } });
-  const name = S.gbMap[exId];
-  if (name && S.gb && S.gb.ex[name]) S.gb.ex[name].forEach(([date, sets]) => {
-    if (!seen.has(date)) out.push({ date, sets: sets.map(([kg, reps]) => ({ kg, reps, done:true })), src:'gb' });
-  });
+function exHistory(exId) {          // más reciente primero
+  const out = [], seen = new Set(), vname = eff(EX_BY_ID[exId]).name;
+  // solo sesiones hechas con la misma variante (otro aparato = otra escala de peso)
+  sessionsSorted().forEach(se => { const e = se.ex.find(x => x.id === exId && (!x.vname || x.vname === vname)); if (e) { const d = doneSets(e.sets); if (d.length) { out.push({ date:se.date, sid:se.id, sets:d, src:'app' }); seen.add(se.date); } } });
   return out.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// ===== Importación GymBook (CSV exportado desde la app: Ajustes → Exportar) =====
-function decodeFile(buf) {
-  const u = new Uint8Array(buf);
-  if (u[0] === 0xFF && u[1] === 0xFE) return new TextDecoder('utf-16le').decode(u.subarray(2));
-  if (u[0] === 0xFE && u[1] === 0xFF) return new TextDecoder('utf-16be').decode(u.subarray(2));
-  if (u[0] === 0xEF && u[1] === 0xBB && u[2] === 0xBF) return new TextDecoder('utf-8').decode(u.subarray(3));
-  return new TextDecoder('utf-8').decode(u);
-}
-function parseCSV(txt) {
-  const rows = []; let row = [], f = '', q = false;
-  for (let i = 0; i < txt.length; i++) {
-    const c = txt[i];
-    if (q) { if (c === '"') { if (txt[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
-    else if (c === '"') q = true;
-    else if (c === ',') { row.push(f); f = ''; }
-    else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
-    else f += c;
-  }
-  if (f !== '' || row.length) { row.push(f); rows.push(row); }
-  return rows.filter(r => r.length > 1);
-}
-function parseGymBook(txt) {
-  const rows = parseCSV(txt); if (!rows.length) throw new Error('archivo vacío');
-  const H = rows[0].map(h => h.trim());
-  const col = re => H.findIndex(h => re.test(h));
-  const iD = col(/^(Fecha|Date|Datum)$/i), iE = col(/^(Ejercicio|Exercise|Übung)$/i), iT = col(/^(Serie|Set|Satz)/i),
-        iR = col(/^(Repeticiones|Reps|Wiederholungen)/i), iW = col(/^(Peso|Weight|Gewicht)/i), iS = col(/^(Saltado|Skipped|Übersprungen)$/i);
-  if (iD < 0 || iE < 0 || iR < 0 || iW < 0) throw new Error('no parece una exportación de GymBook (faltan columnas Fecha/Ejercicio/Repeticiones/Peso)');
-  const ex = {}; let sets = 0, skipped = 0, from = null, to = null;
-  rows.slice(1).forEach(r => {
-    const dm = String(r[iD]).match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/); if (!dm) { skipped++; return; }
-    if (iS >= 0 && /^(sí|si|yes|ja)$/i.test(String(r[iS]).trim())) { skipped++; return; }
-    if (iT >= 0 && /calent|enfri|warm|cool|aufw|abw/i.test(r[iT])) { skipped++; return; }
-    const rep = String(r[iR]).match(/([\d.,]+)\s*(repeticion|rep|wdh)/i); if (!rep) { skipped++; return; }  // series por tiempo
-    const reps = num(rep[1]);
-    const wm = String(r[iW]).match(/([\d.,]+)\s*(kg|lb)?/i);
-    let kg = wm ? num(wm[1].replace(/\.(?=\d{3}\b)/g, '')) : 0; if (wm && /lb/i.test(wm[2] || '')) kg = Math.round(kg * 0.45359 * 4) / 4;
-    if (/km|mi\b/i.test(String(r[iW]))) { skipped++; return; }
-    const y = dm[3].length === 2 ? 2000 + +dm[3] : +dm[3];
-    const date = y + '-' + pad(+dm[2]) + '-' + pad(+dm[1]);
-    const name = String(r[iE]).trim();
-    const list = ex[name] = ex[name] || {};
-    (list[date] = list[date] || []).push([kg || 0, reps]); sets++;
-    if (!from || date < from) from = date; if (!to || date > to) to = date;
-  });
-  const out = {}; Object.keys(ex).forEach(n => { out[n] = Object.keys(ex[n]).sort().reverse().map(d => [d, ex[n][d]]); });
-  return { ex: out, meta: { sets, skipped, from, to, exercises: Object.keys(out).length, imported: new Date().toISOString() } };
-}
-function gbNames() {
-  if (!S.gb) return [];
-  return Object.keys(S.gb.ex).map(n => ({ n, last: S.gb.ex[n][0][0], cnt: S.gb.ex[n].length })).sort((a, b) => b.last.localeCompare(a.last) || a.n.localeCompare(b.n));
-}
 function statsOf(sets) {
   let top = null, topR = 0, vol = 0, best = 0, reps = 0;
   sets.forEach(s => { const w = num(s.kg) || 0, r = num(s.reps) || 0; reps += r; vol += w * r;
@@ -603,19 +599,16 @@ function suggestion(ex) {
       goal:`Todas las series a ${max} reps → sube ligeramente la carga (salto sugerido +${fmtKg(ex.inc)} kg)` };
     return { cls:'kg-hold', kg: st.top, last, st, goal:`Mantén la carga hasta hacer ${max} reps en las ${ex.sets} series` };
   }
-  return { cls:'kg-hold', kg: ex.ref ? ex.ref.w : null, ref: !!ex.ref };
+  return { cls:'kg-hold', kg: null };
 }
 function dynSuggest(ex) {
   const s = suggestion(ex), unit = ex.unit ? `<span class="unit-badge">${ex.unit}</span>` : '';
   const val = k => ex.bw ? (k ? `PC + ${fmtKg(k)} kg` : 'PC') : `${fmtKg(k)} kg`;
   if (s.last) {
-    const gb = s.last.src === 'gb', old = daysBetween(s.last.date, todayISO()) > 45;
-    return `<span class="kg-val ${s.cls}">${val(s.kg)}</span>${unit}${gb ? '<span class="unit-badge">GymBook</span>' : ''}${old ? '<span class="stale-badge">antiguo</span>' : ''}`
-      + `<span class="kg-meta">última ${fmtDate(s.last.date)}${gb ? ' (' + esc(S.gbMap[ex.id]) + ')' : ''}: ${setsTxt(s.last.sets)}</span><span class="kg-goal">${old ? 'Registro antiguo: tómalo como punto de partida. ' : ''}${s.goal}</span>`;
+    const old = daysBetween(s.last.date, todayISO()) > 45;
+    return `<span class="kg-val ${s.cls}">${val(s.kg)}</span>${unit}${old ? '<span class="stale-badge">antiguo</span>' : ''}`
+      + `<span class="kg-meta">última ${fmtDate(s.last.date)}: ${setsTxt(s.last.sets)}</span><span class="kg-goal">${old ? 'Registro antiguo: tómalo como punto de partida. ' : ''}${s.goal}</span>`;
   }
-  const t = refText(ex, todayISO());
-  if (t) return `<span class="kg-val kg-hold">${ex.ref.bw ? 'PC' : fmtKg(ex.ref.w) + ' kg'}</span>${t.unit ? `<span class="unit-badge">${t.unit}</span>` : ''}${t.age > 45 ? '<span class="stale-badge">antiguo</span>' : ''}`
-    + `<span class="kg-meta">${t.txt}</span><span class="kg-goal">Punto de partida, ajústalo para quedar a RIR ${rirOf(ex)}</span>`;
   return `<span class="kg-val kg-hold">–</span><span class="kg-goal">Sin registro previo: elige una carga para RIR ${rirOf(ex)}</span>`;
 }
 
@@ -634,7 +627,7 @@ function placeholders(ex, i) {
   const h = exHistory(ex.id);
   if (h.length) { const s = h[0].sets[Math.min(i, h[0].sets.length - 1)]; const sg = suggestion(ex);
     return { kg: sg.cls === 'kg-up' ? fmtKg(sg.kg) : fmtKg(num(s.kg) || 0), reps: String(num(s.reps)) }; }
-  return { kg: ex.ref && !ex.ref.bw ? fmtKg(ex.ref.w) : (ex.bw ? '0' : 'kg'), reps: String(repMin(ex.reps)) };
+  return { kg: ex.bw ? '0' : 'kg', reps: String(repMin(ex.reps)) };
 }
 function draftProgress(dayKey) {
   const day = PLAN.find(x => x.key === dayKey), d = draftOf(dayKey);
@@ -672,20 +665,89 @@ function kcalHint(ws) {
   return { cls:'ok', txt:`Sube ${signed(t, true)} kg/sem. Referencia del plan: ganancia orientativa 0,1–0,25 kg/sem; mantener y revisar la próxima semana.` };
 }
 
+// ===== Pasos (registro manual, opcional) =====
+function stepsWeekAvg(mondayISO) {
+  const end = parseISO(mondayISO); end.setDate(end.getDate() + 7); const endISO = isoDate(end);
+  const v = Object.keys(S.steps).filter(d => d >= mondayISO && d < endISO).map(d => S.steps[d]);
+  const g = num(S.stepGoal);
+  return v.length ? { avg: v.reduce((a, b) => a + b, 0) / v.length, n: v.length, hit: g ? v.filter(x => x >= g).length : 0 } : null;
+}
+
+// ===== Temporizador de descanso =====
+// Por defecto el punto medio del descanso del plan: compuestos 2–3 min → 2:30, aislamientos 60–120 s → 1:30.
+// Con −15/+15 se ajusta el temporizador en marcha y queda como descanso de ese ejercicio.
+function restSecs(ex) { const v = S && S.rest ? num(S.rest[ex.id]) : null; return v || (ex.kind === C ? 150 : 90); }
+function fmtClock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + pad(s % 60); }
+let audioCtx = null;
+function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque del usuario
+  try { if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) { /* sin audio */ }
+}
+function beep() {
+  if (!S.sound) return;
+  try { if (audioCtx) [0, 0.35, 0.7].forEach(off => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + off;
+    o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+    o.start(t0); o.stop(t0 + 0.3); }); } catch (e) { /* sin audio */ }
+}
+function startTimer(exId) {
+  const ex = eff(EX_BY_ID[exId]); unlockAudio();
+  const dur = restSecs(ex), now = Date.now();
+  S.timer = { ex: exId, name: ex.name, dur, start: now, end: now + dur * 1000, beeped: false }; save(); tick();
+}
+function autoStart(exId) {   // ✓ y escribir reps casi a la vez no deben reiniciar dos veces
+  const t = S.timer;
+  if (t && t.ex === exId && Date.now() - t.start < 5000) return;
+  startTimer(exId);
+}
+function stopTimer() { S.timer = null; save(); tick(); }
+function tick() {
+  if (!S) return;
+  const t = S.timer, now = Date.now(), left = t ? (t.end - now) / 1000 : 0;
+  document.querySelectorAll('.tmr').forEach(b => {
+    const on = t && t.ex === b.dataset.ex, ex = eff(EX_BY_ID[b.dataset.ex]);
+    b.classList.toggle('run', !!on && left > 0); b.classList.toggle('end', !!on && left <= 0);
+    const txt = '⏱ ' + (on ? fmtClock(Math.max(0, left)) : fmtClock(restSecs(ex)));
+    if (b.textContent !== txt) b.textContent = txt;
+  });
+  const bar = document.getElementById('rest-bar'); if (!bar) return;
+  if (!t) { bar.className = ''; document.body.classList.remove('has-timer'); return; }
+  if (left <= 0 && !t.beeped) { t.beeped = true; save(); beep(); }
+  if (left < -10) { stopTimer(); return; }          // se para en 0:00 y se cierra solo a los 10 s
+  if (!bar.querySelector('.rb-time')) bar.innerHTML = `<div class="rb-txt"><span class="rb-lbl"></span><span class="rb-name"></span></div>
+    <span class="rb-time"></span><button class="btn ghost small" data-act="t-adj" data-d="-15">−15</button>
+    <button class="btn ghost small" data-act="t-adj" data-d="15">+15</button><button class="btn ghost small" data-act="t-sound" aria-label="Sonido"></button><button class="btn ghost small" data-act="t-stop" aria-label="Parar">✕</button>`;
+  bar.className = 'show' + (left <= 0 ? ' end' : ''); document.body.classList.add('has-timer');
+  bar.querySelector('.rb-lbl').textContent = left > 0 ? `Descanso (${fmtClock(t.dur)})` : 'Descanso terminado';
+  bar.querySelector('.rb-name').textContent = t.name;
+  bar.querySelector('.rb-time').textContent = fmtClock(Math.max(0, left));
+  bar.querySelector('[data-act=t-sound]').textContent = S.sound ? '🔊' : '🔇';
+}
+
+// ===== Protección de datos =====
+function hasData() { return S.sessions.length || S.weights.length || Object.keys(S.steps).length || Object.keys(S.food).length; }
+function backupBanner() {
+  if (!hasData()) return '';
+  const age = S.lastExport ? daysBetween(S.lastExport, todayISO()) : null;
+  if (age !== null && age < BACKUP_DAYS) return '';
+  return `<div class="diag" style="border-color:var(--yellow);background:#2a2414;color:#f8e3b8;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <span><b style="display:inline">Copia de seguridad.</b> ${age === null ? 'Todavía no has exportado tus datos.' : `Última copia hace ${age} días.`}
+    Tus datos solo están en este navegador; guarda el archivo en iCloud Drive para no perderlos.</span>
+    <button class="btn small" data-act="export">Exportar ahora</button></div>`;
+}
+// Pide al navegador que no borre los datos automáticamente (si lo admite; si no, no pasa nada)
+function requestPersist() {
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); }).catch(() => {}); } catch (e) { /* sin soporte */ }
+}
+
 function renderSummary() {
-  const T = S.targets, ws = weightStats(), today = todayISO(), f = S.food[today] || {};
+  const T = S.targets, ws = weightStats(), today = todayISO();
   const cur = ws.last ? ws.last.kg : null;
   const base = cur !== null ? cur : REF_PROFILE.refKg;
   const left = T.goalKg - base;
   const card = (label, val, delta, dCls, equip, ev) => `<div class="rm-card"><span class="rm-label">${label}</span><span class="rm-val">${val}</span>`
     + (delta ? `<span class="rm-delta ${dCls}">${delta}</span>` : '') + (equip ? `<span class="rm-equip">${equip}</span>` : '') + (ev ? `<span class="rm-ev">${ev}</span>` : '') + `</div>`;
-  const macro = (label, key, unit) => {
-    const v = num(f[key]); const t = T[key];
-    const d = v === null ? 'hoy sin registrar' : `hoy ${fmtInt(v)} / ${fmtInt(t)} ${unit} (${Math.round(v / t * 100)} %)`;
-    const cls = v === null ? 'rm-flat' : (v >= t * 0.95 ? 'rm-up' : 'rm-down');
-    return card(label, `${fmtInt(t)} ${unit}`, d, cls, 'objetivo diario', '');
-  };
-  let h = `<div class="rm-summary">
+  let h = backupBanner() + `<div class="rm-summary">
     <h2>Seguimiento hipertrofia <span class="rm-stamp">${storageOK ? 'datos guardados en este dispositivo' : 'almacenamiento no disponible: los datos se perderán al cerrar'}</span></h2>
     <div class="rm-grid">`;
   h += card('Peso actual', cur !== null ? fmtKg(cur) + ' kg' : fmtKg(REF_PROFILE.refKg) + ' kg',
@@ -694,7 +756,12 @@ function renderSummary() {
     left > 0 ? `a 0,1–0,25 kg/sem ≈ ${Math.ceil(left / 0.25)}–${Math.ceil(left / 0.1)} semanas` : '', '');
   h += card('Tendencia', ws.trend === null ? '–' : signed(ws.trend, true) + ' kg/sem', ws.trend === null ? 'faltan 2 semanas de datos' : 'media últimas semanas',
     ws.trend === null ? 'rm-flat' : (ws.trend > 0 ? 'rm-up' : 'rm-down'), '', '');
-  h += macro('Calorías', 'kcal', 'kcal') + macro('Proteína', 'prot', 'g') + macro('Grasas', 'fat', 'g') + macro('Carbohidratos', 'carb', 'g');
+  // Nutrición fuera del resumen por ahora: solo en la pestaña PESO.
+  const st = num(S.steps[today]), sg = num(S.stepGoal), sw = stepsWeekAvg(weekMonday(today));
+  h += card('Pasos hoy', st === null ? '–' : fmtInt(st),
+    st === null ? 'sin registrar' : (sg ? `${Math.round(st / sg * 100)} % de ${fmtInt(sg)}` : 'sin objetivo'),
+    st === null || !sg ? 'rm-flat' : (st >= sg ? 'rm-up' : 'rm-down'),
+    sw ? `media semana: ${fmtInt(sw.avg)} (${sw.n} día${sw.n === 1 ? '' : 's'})${sg ? ` · ${sw.hit} de ${sw.n} ≥ mínimo` : ''}` : '', '');
   h += `</div>
     <details class="method-box"><summary>Pautas de ejecución y progresión</summary><ul>${GUIDE.map(g => `<li>${esc(g)}</li>`).join('')}</ul></details>
   </div>`;
@@ -735,10 +802,16 @@ function renderDay(day) {
       <input type="date" class="date-in" data-act="draft-date" value="${esc(d.date)}"></div>
     <div class="prog-wrap"><div class="prog-txt"><span>Progreso de la sesión</span><span id="prog-txt">${pr.done} / ${pr.total} series</span></div>
       <div class="progress${pr.done === pr.total ? ' ok' : ''}" id="prog-bar"><span style="width:${pr.total ? pr.done / pr.total * 100 : 0}%"></span></div></div>`;
-  day.ex.forEach(ex => {
+  h += `<div class="kg-meta" style="padding:8px 16px 0;font-size:11px">RIR = repeticiones que te quedaban en reserva antes del fallo técnico (0 = no podías hacer ni una más con buena técnica). Lo estimas tú al terminar la serie; es opcional.</div>`;
+  day.ex.map(eff).forEach(ex => {
+    const vsel = ex.vList.length > 1 ? `<select class="set-in" style="font-size:12px;padding:5px;margin-top:6px" data-act="variant" data-ex="${ex.id}" aria-label="Variante">${ex.vList.map((v, i) =>
+      `<option value="${i}"${i === ex.vIdx ? ' selected' : ''}>${i === 0 ? 'Plan: ' : 'Variante: '}${esc(v.name)}</option>`).join('')}</select>` : '';
     h += `<div class="log-ex" data-ex="${ex.id}">
-      <div class="log-head"><span class="log-name">${esc(ex.name)}</span><span class="log-plan">${ex.sets} × ${esc(ex.reps)} · RIR ${rirOf(ex)} · ${restOf(ex)}</span></div>
+      <div class="log-head"><span class="log-name">${esc(ex.name)}</span><span class="log-right"><span class="log-plan">${ex.sets} × ${esc(ex.reps)} · RIR ${rirOf(ex)} · ${restOf(ex)}</span>
+        <button class="tmr" data-act="timer" data-ex="${ex.id}" aria-label="Temporizador de descanso">⏱ ${fmtClock(restSecs(ex))}</button></span></div>
+      ${ex.vIdx ? `<div class="kg-meta">En el plan: ${esc(ex.planName)} · mismas series y repeticiones</div>` : ''}
       <div>${tagsOf(ex)}${ex.unit ? `<span class="unit-badge">kg ${ex.unit}</span>` : ''}${ex.bw ? '<span class="unit-badge">kg = lastre</span>' : ''}</div>
+      ${vsel}
       <div class="log-cmp" id="cmp-${ex.id}">${cmpHtml(ex, d)}</div>
       <div class="set-grid"><span class="set-hdr">#</span><span class="set-hdr">Peso (kg)</span><span class="set-hdr">Reps</span><span class="set-hdr">RIR</span><span class="set-hdr"></span>`;
     d.sets[ex.id].forEach((s, i) => {
@@ -768,15 +841,14 @@ function cmpHtml(ex, d) {
   let out = '';
   if (h.length) {
     const st = statsOf(h[0].sets);
-    const tag = x => x.src === 'gb' ? ' GymBook' : '';
-    out += `Última (${fmtDate(h[0].date)}${tag(h[0])}): <b>${setsTxt(h[0].sets)}</b>`;
-    if (h.length > 1) out += ` · anterior (${fmtDate(h[1].date)}${tag(h[1])}): ${setsTxt(h[1].sets)}`;
+    out += `Última (${fmtDate(h[0].date)}): <b>${setsTxt(h[0].sets)}</b>`;
+    if (h.length > 1) out += ` · anterior (${fmtDate(h[1].date)}): ${setsTxt(h[1].sets)}`;
     if (cur.length) {
       const cs = statsOf(cur);
       out += `<br>Hoy: carga máx. <b>${fmtKg(cs.top)} kg</b> (${signed(cs.top - st.top, true)} kg) · volumen <b>${fmtInt(cs.vol)}</b> kg·rep (${signed(cs.vol - st.vol)} vs ${fmtInt(st.vol)})`;
     }
   } else {
-    out += ex.ref ? refText(ex, todayISO()).txt + ' · todavía sin sesiones en esta app' : 'Primera sesión de este ejercicio';
+    out += 'Primera sesión de este ejercicio';
     if (cur.length) { const cs = statsOf(cur); out += `<br>Hoy: carga máx. <b>${fmtKg(cs.top)} kg</b> · volumen <b>${fmtInt(cs.vol)}</b> kg·rep`; }
   }
   return out;
@@ -785,11 +857,10 @@ function cmpHtml(ex, d) {
 function weekDoneVolume(mondayISO) {
   const v = {}; MUSCLES.forEach(m => v[m] = 0);
   const end = parseISO(mondayISO); end.setDate(end.getDate() + 7); const endISO = isoDate(end);
-  // app + GymBook; un ejercicio que sale en dos días del plan con el mismo nombre GymBook se cuenta una vez por fecha
   const counted = new Set();
   Object.keys(EX_BY_ID).forEach(id => exHistory(id).forEach(x => {
     if (x.date < mondayISO || x.date >= endISO) return;
-    const k = x.date + '|' + (x.src === 'gb' ? 'gb:' + S.gbMap[id] : 'app:' + id + ':' + x.sid);
+    const k = x.date + '|' + id + ':' + x.sid;
     if (counted.has(k)) return; counted.add(k);
     v[EX_BY_ID[id].prim] += x.sets.length;
   }));
@@ -820,7 +891,7 @@ function renderVolume() {
 
   h += `<div class="day-card" style="margin-top:20px"><div class="day-title tool">Ejercicios por grupo muscular</div><div class="day-body">`;
   MUSCLES.forEach(m => {
-    const list = []; PLAN.forEach(d => (d.ex || []).forEach(e => { if (e.prim === m) list.push(`${d.short}: ${esc(e.name)} (${e.sets}×${esc(e.reps)})`); else if (e.sec.includes(m)) list.push(`<span class="hist-meta">${d.short}: ${esc(e.name)} — indirecto</span>`); }));
+    const list = []; PLAN.forEach(d => (d.ex || []).map(eff).forEach(e => { if (e.prim === m) list.push(`${d.short}: ${esc(e.name)} (${e.sets}×${esc(e.reps)})`); else if (e.sec.includes(m)) list.push(`<span class="hist-meta">${d.short}: ${esc(e.name)} — indirecto</span>`); }));
     if (list.length) h += `<div style="margin-bottom:10px">${mTag(m, false)}<div class="kg-meta" style="font-size:11.5px;color:#c7d2dd">${list.join('<br>')}</div></div>`;
   });
   return h + `</div></div>`;
@@ -873,18 +944,47 @@ function renderWeight() {
       <div class="hint ${hint.cls}">${hint.txt}</div>
     </div></div>
     <div class="day-card"><div class="day-title tool">Evolución semanal</div>`;
-  if (!ws.wk.length) h += `<div class="day-body"><div class="empty">Sin registros de peso todavía.</div></div>`;
+  const wkMap = {}; ws.wk.forEach(w => { wkMap[w.mon] = w; });
+  const mons = [...new Set(ws.wk.map(w => w.mon).concat(Object.keys(S.steps).map(weekMonday)))].sort().reverse();
+  if (!mons.length) h += `<div class="day-body"><div class="empty">Sin registros de peso ni pasos todavía.</div></div>`;
   else {
-    h += `<table class="ex-table"><thead><tr><th class="col-ex">Semana</th><th class="col-s">Media</th><th class="col-s">Cambio</th><th class="col-s">Registros</th></tr></thead><tbody>`;
-    ws.wk.slice().reverse().forEach(w => {
-      const cls = w.delta === null ? 'rm-flat' : (w.delta > 0 ? 'rm-up' : (w.delta < 0 ? 'rm-down' : 'rm-flat'));
-      h += `<tr><td class="col-ex">S${w.iso.w} · ${fmtDate(w.mon)}</td><td class="col-s"><b>${fmtKg(Math.round(w.avg * 100) / 100)}</b></td><td class="col-s"><span class="${cls}">${w.delta === null ? '–' : signed(w.delta, true)}</span></td><td class="col-s">${w.n}</td></tr>`;
+    h += `<table class="ex-table"><thead><tr><th class="col-ex">Semana</th><th class="col-s">Peso medio</th><th class="col-s">Cambio</th><th class="col-s">Pesajes</th><th class="col-s">Pasos/día</th></tr></thead><tbody>`;
+    mons.forEach(mon => {
+      const w = wkMap[mon], sa = stepsWeekAvg(mon);
+      const cls = !w || w.delta === null ? 'rm-flat' : (w.delta > 0 ? 'rm-up' : (w.delta < 0 ? 'rm-down' : 'rm-flat'));
+      h += `<tr><td class="col-ex">S${isoWeek(mon).w} · ${fmtDate(mon)}</td><td class="col-s"><b>${w ? fmtKg(Math.round(w.avg * 100) / 100) : '–'}</b></td>`
+        + `<td class="col-s"><span class="${cls}">${!w || w.delta === null ? '–' : signed(w.delta, true)}</span></td><td class="col-s">${w ? w.n : 0}</td>`
+        + `<td class="col-s">${sa ? fmtInt(sa.avg) + `<span class="kg-meta">${sa.n} día${sa.n === 1 ? '' : 's'}</span>` : '–'}</td></tr>`;
     });
     h += `</tbody></table>`;
   }
   h += `<div class="day-body"><details><summary class="kg-meta" style="cursor:pointer">Registros diarios (${S.weights.length})</summary>`
     + S.weights.slice().reverse().map(w => `<div class="hist-body row" style="display:flex;justify-content:space-between;padding:4px 0">${fmtDate(w.date)} — <b>${fmtKg(w.kg)} kg</b><button class="btn ghost small" data-act="del-weight" data-date="${esc(w.date)}">Borrar</button></div>`).join('')
     + `</details></div></div></div>`;
+
+  // Pasos
+  const stDates = Object.keys(S.steps).sort().reverse(), sg = num(S.stepGoal);
+  const last14 = []; for (let k = 13; k >= 0; k--) { const d = parseISO(today); d.setDate(d.getDate() - k); const iso = isoDate(d); last14.push({ iso, v: S.steps[iso] }); }
+  const maxS = Math.max(sg || 0, ...last14.map(x => x.v || 0)) || 1;
+  h += `<div class="day-card" style="margin-top:20px"><div class="day-title tool">Pasos diarios <span style="font-size:12px;font-weight:500">opcional</span></div><div class="day-body">
+    <div class="form-row">
+      <label class="field">Fecha<input type="date" id="s-date" value="${today}"></label>
+      <label class="field">Pasos<input type="text" inputmode="numeric" id="s-val" placeholder="${S.steps[today] !== undefined ? fmtInt(S.steps[today]) : 'p. ej. 8000'}"></label>
+      <button class="btn" data-act="add-steps">Guardar pasos</button>
+      <label class="field">Mínimo diario<input type="text" inputmode="numeric" id="s-goal" value="${sg ? sg : ''}" placeholder="sin objetivo"></label>
+      <button class="btn ghost" data-act="save-step-goal">Guardar objetivo</button>
+    </div>
+    <div class="kg-meta" style="margin-top:8px">Copia el número de la app Salud (Resumen → Pasos). Si guardas otra vez el mismo día, se sustituye.</div>
+    <div class="chart-box"><svg viewBox="0 0 640 150" role="img">${last14.map((x, i) => {
+      const bw = 640 / 14, hgt = x.v ? Math.max(2, x.v / maxS * 110) : 0, xx = i * bw + 4, yy = 120 - hgt;
+      const ok = sg && x.v >= sg, dd = parseISO(x.iso);
+      return (x.v ? `<rect x="${xx.toFixed(1)}" y="${yy.toFixed(1)}" width="${(bw - 8).toFixed(1)}" height="${hgt.toFixed(1)}" rx="3" fill="${ok ? '#27ae60' : '#c0392b'}"/>` : '')
+        + `<text x="${(xx + (bw - 8) / 2).toFixed(1)}" y="140" fill="#8899aa" font-size="10" text-anchor="middle">${pad(dd.getDate())}/${pad(dd.getMonth() + 1)}</text>`;
+    }).join('')}${sg ? `<line x1="0" x2="640" y1="${(120 - sg / maxS * 110).toFixed(1)}" y2="${(120 - sg / maxS * 110).toFixed(1)}" stroke="#27ae60" stroke-dasharray="6 4"/>` : ''}</svg></div>
+    <div class="kg-meta">Últimos 14 días${sg ? ' · verde: objetivo cumplido' : ''}.</div>
+    <details style="margin-top:8px"><summary class="kg-meta" style="cursor:pointer">Registros (${stDates.length})</summary>`
+    + stDates.map(d => `<div class="hist-body row" style="display:flex;justify-content:space-between;padding:4px 0">${fmtDate(d)} — <b>${fmtInt(S.steps[d])} pasos</b><button class="btn ghost small" data-act="del-steps" data-date="${esc(d)}">Borrar</button></div>`).join('')
+    + `</details></div></div>`;
 
   // Nutrición
   h += `<div class="two-col" style="margin-top:20px">
@@ -933,7 +1033,7 @@ function renderHistory() {
   const sel = S.ui.cmpEx && EX_BY_ID[S.ui.cmpEx] ? S.ui.cmpEx : allEx[0].id;
   const ex = EX_BY_ID[sel], eh = exHistory(sel).slice(0, 30).reverse();   // últimas 30 sesiones
   h += `<div class="day-card"><div class="day-title tool">Comparar pesos entre sesiones</div><div class="day-body">
-    <label class="field">Ejercicio<select data-act="cmp-ex">${PLAN.filter(d => d.type === 'train').map(d => `<optgroup label="${d.name} — ${esc(d.title)}">${d.ex.map(e => `<option value="${e.id}"${e.id === sel ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+    <label class="field">Ejercicio<select data-act="cmp-ex">${PLAN.filter(d => d.type === 'train').map(d => `<optgroup label="${d.name} — ${esc(d.title)}">${d.ex.map(eff).map(e => `<option value="${e.id}"${e.id === sel ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
   if (!eh.length) h += `<div class="empty" style="margin-top:8px">Todavía no hay sesiones guardadas de este ejercicio.</div></div></div>`;
   else {
     h += `<div class="chart-box">${lineChart([{ pts: eh.map(x => ({ x: parseISO(x.date).getTime(), y: statsOf(x.sets).top })), color:'#e74c3c', dots:true, width:2.5, r:4 }], { unit:' kg' })}</div>
@@ -942,7 +1042,7 @@ function renderHistory() {
     eh.slice().reverse().slice(0, 40).forEach((x, i, arr) => {
       const st = statsOf(x.sets), prev = arr[i + 1] ? statsOf(arr[i + 1].sets) : null;
       const d = prev ? st.top - prev.top : null;
-      h += `<tr><td class="col-ex">${fmtDate(x.date)}${x.src === 'gb' ? '<span class="unit-badge">GymBook</span>' : ''}</td><td class="col-n">${setsTxt(x.sets)}</td><td class="col-s"><b>${fmtKg(st.top)}</b></td>
+      h += `<tr><td class="col-ex">${fmtDate(x.date)}</td><td class="col-n">${setsTxt(x.sets)}</td><td class="col-s"><b>${fmtKg(st.top)}</b></td>
         <td class="col-s"><span class="${d === null ? 'rm-flat' : (d > 0 ? 'rm-up' : (d < 0 ? 'rm-down' : 'rm-flat'))}">${d === null ? '–' : signed(d, true)}</span></td>
         <td class="col-s">${fmtInt(st.vol)}</td><td class="col-s">${ex.bw ? '–' : fmtKg(Math.round(st.best * 10) / 10)}</td></tr>`;
     });
@@ -956,33 +1056,9 @@ function renderHistory() {
     se.ex.forEach(e => { const ds = doneSets(e.sets); done += ds.length; vol += statsOf(ds).vol; });
     h += `<details class="hist-item"><summary><span><b>${fmtDate(se.date)}</b> · ${day ? day.name + ' — ' + esc(day.title) : esc(se.day)}</span><span class="hist-meta">${done}/${day ? totalSets(day) : '?'} series · ${fmtInt(vol)} kg·rep</span></summary><div class="hist-body">`;
     se.ex.forEach(e => { const ds = doneSets(e.sets); const ex = EX_BY_ID[e.id];
-      h += `<div class="row"><b>${esc(ex ? ex.name : e.name)}</b> — ${ds.length ? ds.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}${num(s.rir) !== null ? ' @' + num(s.rir) : ''}`).join(' · ') : '<span class="hist-meta">sin series completadas</span>'}</div>`; });
+      h += `<div class="row"><b>${esc(e.vname || (ex ? ex.name : e.name))}</b> — ${ds.length ? ds.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}${num(s.rir) !== null ? ' @' + num(s.rir) : ''}`).join(' · ') : '<span class="hist-meta">sin series completadas</span>'}</div>`; });
     h += `<div style="margin-top:8px"><button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
   });
-  h += `</div>`;
-  // Conexión GymBook
-  const m = S.gb && S.gb.meta, names = gbNames();
-  h += `<div class="day-card" id="gb-card"><div class="day-title tool">Conexión con GymBook</div><div class="day-body">
-    <div class="kg-meta" style="margin-bottom:10px;font-size:11.5px;color:#c7d2dd">GymBook no tiene conexión directa, pero exporta todo tu registro (cada serie con peso y repeticiones) a CSV.
-      Usa la exportación CSV de GymBook (la misma que generó GymBook-Logs-2026-10-17.csv), guarda el archivo y súbelo aquí. Cada exportación contiene todo el historial, así que puedes reimportar cuando quieras: reemplaza la importación anterior y no toca lo que registras en esta app.
-      Si el mismo día hay sesión en las dos, manda la de esta app.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" data-act="gb-import">Importar CSV de GymBook</button>
-      <input type="file" id="gb-file" accept=".csv,text/csv,text/plain" style="display:none">
-      ${m ? `<button class="btn ghost" data-act="gb-clear">Quitar datos de GymBook</button>` : ''}</div>
-    ${m ? `<div class="hint ok">Importado ${fmtDate(m.imported.slice(0, 10))}${m.file ? ' · ' + esc(m.file) : ''}: ${fmtInt(m.sets)} series de ${m.exercises} ejercicios, del ${fmtDate(m.from)} al ${fmtDate(m.to)}. ${fmtInt(m.skipped)} filas ignoradas (saltadas, calentamiento, por tiempo o distancia).</div>` : ''}
-  </div>`;
-  if (m) {
-    h += `<table class="ex-table"><thead><tr><th class="col-ex">Ejercicio del plan</th><th class="col-n">Equivale en GymBook</th><th class="col-s">Última</th></tr></thead><tbody>`;
-    PLAN.filter(d => d.type === 'train').forEach(d => d.ex.forEach(e => {
-      const cur = S.gbMap[e.id] || '', hist = cur && S.gb.ex[cur];
-      h += `<tr><td class="col-ex">${d.short} · ${esc(e.name)}</td><td class="col-n"><select class="set-in" style="font-size:12px;padding:5px" data-act="gb-map" data-ex="${e.id}">
-        <option value="">— sin equivalente —</option>${names.map(x => `<option value="${esc(x.n)}"${x.n === cur ? ' selected' : ''}>${esc(x.n)} (${x.cnt} ses., ${fmtDateShort(x.last)}/${x.last.slice(2, 4)})</option>`).join('')}
-        ${cur && !S.gb.ex[cur] ? `<option value="${esc(cur)}" selected>${esc(cur)} (no está en el archivo)</option>` : ''}</select></td>
-        <td class="col-s">${hist ? fmtDate(hist[0][0]) + '<span class="kg-meta">' + setsTxt(hist[0][1].map(([kg, reps]) => ({ kg, reps }))) + '</span>' : '–'}</td></tr>`;
-    }));
-    h += `</tbody></table><div class="day-body"><div class="kg-meta">Elige la variante que de verdad haces. Si en GymBook usabas otra (por ejemplo, mancuernas en vez de barra), el peso no es comparable: déjala sin equivalente.
-      <button class="btn ghost small" data-act="gb-map-reset" style="margin-left:6px">Restaurar equivalencias propuestas</button></div></div>`;
-  }
   h += `</div>`;
   // Copia de seguridad
   h += `<div class="day-card"><div class="day-title tool">Copia de seguridad</div><div class="day-body">
@@ -1017,16 +1093,16 @@ function refreshSessionBits(exId) {
   const pt = document.getElementById('prog-txt'), pb = document.getElementById('prog-bar');
   if (pt) pt.textContent = `${pr.done} / ${pr.total} series`;
   if (pb) { pb.firstElementChild.style.width = (pr.total ? pr.done / pr.total * 100 : 0) + '%'; pb.classList.toggle('ok', pr.done === pr.total); }
-  const c = document.getElementById('cmp-' + exId); if (c) c.innerHTML = cmpHtml(EX_BY_ID[exId], draftOf(day.key));
+  const c = document.getElementById('cmp-' + exId); if (c) c.innerHTML = cmpHtml(eff(EX_BY_ID[exId]), draftOf(day.key));
 }
 function onClick(ev) {
   const t = ev.target.closest('[data-tab],[data-act]'); if (!t) return;
   if (t.dataset.tab) { S.ui.tab = t.dataset.tab; save(); render(); window.scrollTo({ top: document.getElementById('nav').offsetTop, behavior:'smooth' }); return; }
   const act = t.dataset.act;
   if (act === 'toggle') {
-    const day = curDay(), d = draftOf(day.key), ex = EX_BY_ID[t.dataset.ex], i = +t.dataset.i, s = d.sets[ex.id][i];
+    const day = curDay(), d = draftOf(day.key), ex = eff(EX_BY_ID[t.dataset.ex]), i = +t.dataset.i, s = d.sets[ex.id][i];
     if (!s.done) {
-      // campos vacíos: primero la serie anterior de hoy, después la sugerencia (última sesión / GymBook)
+      // campos vacíos: primero la serie anterior de hoy, después la sugerencia de la última sesión
       const ph = placeholders(ex, i), prev = i > 0 ? d.sets[ex.id][i - 1] : null;
       let kg = s.kg, reps = s.reps;
       if (kg === '') kg = prev && num(prev.kg) !== null ? prev.kg : (num(ph.kg) !== null ? ph.kg : (ex.bw ? '0' : ''));
@@ -1036,6 +1112,7 @@ function onClick(ev) {
       s.kg = kg; s.reps = reps;
     }
     s.done = !s.done; save();
+    if (s.done) autoStart(ex.id);
     const row = document.getElementById(`row-${ex.id}-${i}`);
     if (row) { row.classList.toggle('done', s.done); row.querySelectorAll('input').forEach(inp => { inp.value = s[inp.dataset.f]; }); }
     refreshSessionBits(ex.id);
@@ -1048,7 +1125,7 @@ function onClick(ev) {
     if (dup && !confirm(`Ya hay una sesión de ${day.name} guardada el ${fmtDate(date)}. ¿Reemplazarla?`)) return;
     if (dup) S.sessions = S.sessions.filter(x => x !== dup);
     S.sessions.push({ id: 's' + Date.now().toString(36), date, day: day.key, saved: new Date().toISOString(),
-      ex: day.ex.map(e => ({ id: e.id, name: e.name, sets: d.sets[e.id].map(s => ({ kg: num(s.kg), reps: num(s.reps), rir: num(s.rir), done: !!s.done })) })) });
+      ex: day.ex.map(eff).map(e => ({ id: e.id, name: e.planName, vname: e.name, sets: d.sets[e.id].map(s => ({ kg: num(s.kg), reps: num(s.reps), rir: num(s.rir), done: !!s.done })) })) });
     delete S.drafts[day.key]; save(); render(); toast('Sesión guardada');
   } else if (act === 'clear-draft') {
     if (!confirm('¿Vaciar todas las series de este registro?')) return;
@@ -1061,6 +1138,34 @@ function onClick(ev) {
   } else if (act === 'del-weight') {
     if (!confirm('¿Borrar el registro de peso del ' + fmtDate(t.dataset.date) + '?')) return;
     S.weights = S.weights.filter(w => w.date !== t.dataset.date); save(); render();
+  } else if (act === 'timer') {
+    const id = t.dataset.ex, run = S.timer && S.timer.ex === id && S.timer.end > Date.now();
+    if (run) stopTimer(); else startTimer(id);
+  } else if (act === 't-sound') {
+    S.sound = !S.sound; if (S.sound) unlockAudio(); save(); tick();
+    toast(S.sound ? 'Sonido activado al terminar el descanso' : 'Sonido desactivado');
+  } else if (act === 't-stop') {
+    stopTimer();
+  } else if (act === 't-adj') {
+    if (!S.timer) return;
+    const d = +t.dataset.d, nd = Math.max(15, S.timer.dur + d);
+    S.timer.end += (nd - S.timer.dur) * 1000; S.timer.dur = nd;
+    if (S.timer.end > Date.now()) S.timer.beeped = false;
+    S.rest[S.timer.ex] = nd; save(); tick();
+  } else if (act === 'add-steps') {
+    const date = document.getElementById('s-date').value || todayISO();
+    const v = num(String(document.getElementById('s-val').value).replace(/[.,\s]/g, ''));
+    if (v === null || v < 0 || v > 150000) { toast('Introduce un número de pasos válido', true); return; }
+    S.steps[date] = Math.round(v); save(); render(); toast('Pasos guardados');
+  } else if (act === 'del-steps') {
+    if (!confirm('¿Borrar los pasos del ' + fmtDate(t.dataset.date) + '?')) return;
+    delete S.steps[t.dataset.date]; save(); render();
+  } else if (act === 'save-step-goal') {
+    const raw = String(document.getElementById('s-goal').value).replace(/[.,\s]/g, '');
+    if (raw === '') { S.stepGoal = null; save(); render(); toast('Objetivo de pasos quitado'); return; }
+    const v = num(raw);
+    if (v === null || v <= 0 || v > 100000) { toast('Objetivo no válido', true); return; }
+    S.stepGoal = Math.round(v); save(); render(); toast('Objetivo de pasos guardado');
   } else if (act === 'save-food') {
     const date = S.ui.foodDate || todayISO(), o = {};
     ['kcal', 'prot', 'carb', 'fat'].forEach(k => { const v = num(document.getElementById('f-' + k).value); if (v !== null) o[k] = v; });
@@ -1078,17 +1183,12 @@ function onClick(ev) {
     S.sessions = S.sessions.filter(x => x.id !== t.dataset.id); save(); render();
   } else if (act === 'export') {
     const blob = new Blob([JSON.stringify(S, null, 1)], { type:'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hipertrofia-datos-' + todayISO() + '.json';
+    S.lastExport = todayISO(); save();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gymview-datos-' + todayISO() + '.json';
+    setTimeout(render, 600);
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   } else if (act === 'import') {
     document.getElementById('imp-file').click();
-  } else if (act === 'gb-import') {
-    document.getElementById('gb-file').click();
-  } else if (act === 'gb-clear') {
-    if (!confirm('¿Quitar los datos importados de GymBook? Tus sesiones registradas en esta app no se tocan.')) return;
-    S.gb = null; save(); render(); toast('Datos de GymBook quitados');
-  } else if (act === 'gb-map-reset') {
-    S.gbMap = Object.assign({}, DEFAULT_GB_MAP); save(); render(); toast('Equivalencias restauradas');
   } else if (act === 'wipe') {
     if (!confirm('¿Borrar TODOS los datos (sesiones, peso, nutrición)? Exporta antes una copia si la quieres conservar.')) return;
     S = blankState(); save(); render(); toast('Datos borrados');
@@ -1107,20 +1207,11 @@ function onChange(ev) {
   if (t.dataset.act === 'draft-date') { const d = draftOf(curDay().key); d.date = t.value || todayISO(); save(); }
   else if (t.dataset.act === 'food-date') { S.ui.foodDate = t.value || todayISO(); save(); render(); }
   else if (t.dataset.act === 'cmp-ex') { S.ui.cmpEx = t.value; save(); render(); }
-  else if (t.dataset.act === 'gb-map') { S.gbMap[t.dataset.ex] = t.value; save(); render(); toast('Equivalencia guardada'); }
-  else if (t.id === 'gb-file' && t.files && t.files[0]) {
-    const file = t.files[0], r = new FileReader();
-    r.onload = () => {
-      try {
-        const res = parseGymBook(decodeFile(r.result));
-        if (!res.meta.sets) throw new Error('no se encontraron series con repeticiones');
-        res.meta.file = file.name; S.gb = res; save();
-        if (!storageOK) toast('Importado, pero este navegador no puede guardarlo', true);
-        render(); toast(`GymBook: ${fmtInt(res.meta.sets)} series importadas`);
-      } catch (e) { toast('No se pudo leer el CSV: ' + (e && e.message ? e.message : e), true); }
-      t.value = '';
-    };
-    r.readAsArrayBuffer(file);
+  else if (t.dataset.act === 'variant') {
+    const base = EX_BY_ID[t.dataset.ex], list = variantsOf(base), i = +t.value;
+    if (!list[i]) return;
+    S.vari[base.id] = i;
+    save(); render(); toast('Variante: ' + list[i].name);
   }
   else if (t.id === 'imp-file' && t.files && t.files[0]) {
     const r = new FileReader();
@@ -1137,13 +1228,16 @@ function onChange(ev) {
 function boot() {
   const st = document.getElementById('static-plan'); if (st) st.remove();
   S = loadState();
+  requestPersist();
   if (S.ui.foodDate && S.ui.foodDate !== todayISO()) S.ui.foodDate = null;
   // al abrir la app se muestra el día de hoy
   S.ui.tab = todayKey();
   const app = document.getElementById('app');
-  app.addEventListener('click', onClick);
+  document.addEventListener('click', onClick);   // también recoge los botones de la barra del temporizador
   app.addEventListener('input', onInput);
   app.addEventListener('change', onChange);
+  setInterval(tick, 250);
+  document.addEventListener('visibilitychange', tick);
   render();
 }
 
