@@ -564,6 +564,7 @@ function normalize(s) {
   if ('stepGoal' in s) b.stepGoal = num(s.stepGoal);   // null = lo quitaste a propósito
   b.sound = s.sound === true;
   b.lastExport = typeof s.lastExport === 'string' ? s.lastExport : null;
+  b.dataAt = typeof s.dataAt === 'string' ? s.dataAt : null;
   if (s.rest && typeof s.rest === 'object') Object.keys(s.rest).forEach(k => { const v = num(s.rest[k]); if (v && v > 0) b.rest[k] = v; });
   if (s.timer && typeof s.timer.end === 'number' && EX_BY_ID[s.timer.ex]) b.timer = s.timer;
   b.targets = Object.assign({}, DEFAULT_TARGETS, s.targets || {});
@@ -885,7 +886,7 @@ function dayMuscleLine(day) {
 }
 
 function renderDay(day) {
-  let h = `<div class="week-header"><h2>${day.name} — ${esc(day.title)}</h2></div>`;
+  let h = '';   // sin título del día: la pestaña ya lo indica
   if (day.type === 'rest') {
     const next = nextTrainingDay(day);
     h += `<div class="day-card"><div class="day-title rest">${day.name} — Descanso</div><div class="day-body">${esc(day.text)}`
@@ -1201,7 +1202,8 @@ function render() {
   else if (tab === 'hist') content = renderHistory();
   else content = renderDay(PLAN.find(d => d.key === tab) || PLAN[0]);
   if (!storageOK) content = `<div class="diag"><b>Este navegador no permite guardar datos.</b>Abre el archivo en Safari o Chrome (no en la vista previa de Archivos, Mail o un chat). Mientras tanto, usa Exportar en Historial para no perder la sesión.</div>` + content;
-  app.innerHTML = renderSummary() + renderNav(tab) + `<div class="week-content">${content}</div>`;
+  app.innerHTML = renderNav(tab) +   // sin bloque resumen: peso, tendencia y pasos están en PESO
+ `<div class="week-content">${content}</div>`;
   const a = app.querySelector('.week-tab.active'); if (a && a.scrollIntoView) a.scrollIntoView({ block:'nearest', inline:'center' });
 }
 
