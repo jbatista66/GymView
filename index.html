@@ -805,17 +805,18 @@ function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque del
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) { /* sin audio */ }
 }
 // Sonido con pantalla bloqueada: al empezar el descanso (con un toque, que iOS exige) se reproduce un audio
-// que es silencio durante el descanso y termina en tres pitidos. Como el pitido va dentro del audio,
+// que es silencio durante el descanso y termina en un pitido corto. Como el pitido va dentro del audio,
 // suena aunque iOS congele la página al bloquear. Sale por los AirPods si están conectados.
 let restAudio = null, restAudioOk = false;
+const BEEPS = 1;   // un único pitido corto al terminar el descanso
 function restWav(silenceSec) {
   const sr = 8000, beepN = Math.round(sr * 0.2), gapN = Math.round(sr * 0.15), sil = Math.max(0, Math.round(sr * silenceSec));
-  const n = sil + 3 * beepN + 2 * gapN, buf = new Uint8Array(44 + n), dv = new DataView(buf.buffer);
+  const n = sil + BEEPS * beepN + (BEEPS - 1) * gapN, buf = new Uint8Array(44 + n), dv = new DataView(buf.buffer);
   const str = (o, s) => { for (let i = 0; i < s.length; i++) buf[o + i] = s.charCodeAt(i); };
   str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
   dv.setUint32(24, sr, true); dv.setUint32(28, sr, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); str(36, 'data'); dv.setUint32(40, n, true);
   buf.fill(128, 44);
-  for (let b = 0; b < 3; b++) { const o = 44 + sil + b * (beepN + gapN);
+  for (let b = 0; b < BEEPS; b++) { const o = 44 + sil + b * (beepN + gapN);
     for (let i = 0; i < beepN; i++) { const env = Math.min(1, i / 80, (beepN - i) / 80); buf[o + i] = 128 + Math.round(110 * env * Math.sin(2 * Math.PI * 880 * i / sr)); } }
   return new Blob([buf], { type: 'audio/wav' });
 }
@@ -832,7 +833,7 @@ function armRestAudio() {          // llamar siempre desde un toque (✓, ⏱, �
 }
 function beep() {
   if (!S.sound || restAudioOk) return;   // si el audio programado está sonando, el pitido ya va en él
-  try { if (audioCtx) [0, 0.35, 0.7].forEach(off => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + off;
+  try { if (audioCtx) [0].forEach(off => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + off;
     o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
     o.start(t0); o.stop(t0 + 0.3); }); } catch (e) { /* sin audio */ }
@@ -877,7 +878,7 @@ function tick() {
   const bar = document.getElementById('rest-bar'); if (!bar) return;
   if (!t) { bar.className = ''; document.body.classList.remove('has-timer'); return; }
   if (left <= 0 && !t.beeped) { t.beeped = true; save(); beep(); }
-  if (left < -10) { stopTimer(); return; }          // se para en 0:00 y se cierra solo a los 10 s
+  if (left < -10) { cancelTimer(); return; }          // se para en 0:00 y se cierra solo a los 10 s
   if (!bar.querySelector('.rb-time')) bar.innerHTML = `<div class="rb-txt"><span class="rb-lbl"></span><span class="rb-name"></span></div>
     <span class="rb-time"></span><button class="btn ghost small" data-act="t-adj" data-d="-15">−15</button>
     <button class="btn ghost small" data-act="t-adj" data-d="15">+15</button><button class="btn ghost small" data-act="t-sound" aria-label="Sonido"></button><button class="btn ghost small" data-act="t-stop" aria-label="Parar">✕</button>`;
