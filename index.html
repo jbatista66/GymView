@@ -595,9 +595,10 @@ function save() {
 // Cada subida es un commit, así que el historial del repositorio guarda todas las versiones.
 // =====================================================================
 const CLOUD_KEY = 'gymview.cloud';
-const DATA_FIELDS = ['sessions', 'weights', 'food', 'steps', 'stepGoal', 'targets', 'rest', 'vari', 'varV', 'sound'];
+const DATA_FIELDS = ['sessions', 'weights', 'food', 'steps', 'stepGoal', 'targets'];   // ajustes del dispositivo (variante, descanso, sonido) no se suben
 let CL = { owner:'jbatista66', repo:'GymView-Data', path:'data.json', token:'', sha:null, synced:null, lastSync:null, status:'off', msg:'' };
-let syncT = null, syncBusy = false, syncAgain = false;
+let syncT = null, syncBusy = false, syncAgain = false, lastPull = 0;
+const PULL_EVERY = 5 * 60 * 1000;
 function loadCloud() { try { Object.assign(CL, JSON.parse(localStorage.getItem(CLOUD_KEY) || '{}')); } catch (e) { /* nada */ } if (!CL.token) CL.status = 'off'; }
 function saveCloud() { try { localStorage.setItem(CLOUD_KEY, JSON.stringify(CL)); } catch (e) { /* nada */ } }
 function payloadOf(st) { const o = {}; DATA_FIELDS.forEach(k => { o[k] = st[k]; }); return JSON.stringify(o); }
@@ -643,7 +644,7 @@ function mergeData(local, remote, remoteNewer) {
   const sess = {}; A.sessions.concat(B.sessions).forEach(x => { sess[x.id] = x; }); o.sessions = Object.values(sess);
   const w = {}; A.weights.concat(B.weights).forEach(x => { w[x.date] = x; }); o.weights = Object.values(w).sort((a, z) => a.date.localeCompare(z.date));
   o.steps = Object.assign({}, A.steps, B.steps); o.food = Object.assign({}, A.food, B.food);
-  ['stepGoal', 'targets', 'rest', 'vari', 'varV', 'sound'].forEach(k => { o[k] = B[k]; });
+  ['stepGoal', 'targets'].forEach(k => { o[k] = B[k]; });
   return o;
 }
 function applyData(d) { const n = normalize(Object.assign({}, S, d)); DATA_FIELDS.forEach(k => { S[k] = n[k]; }); }
@@ -653,7 +654,7 @@ async function syncNow(why) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) { setSync('offline'); return; }
   syncBusy = true; setSync('busy');
   try {
-    const remote = await ghGet();
+    const remote = await ghGet(); lastPull = Date.now();
     const local = payloadOf(S), localChanged = local !== CL.synced;
     if (!remote) {                                    // primera vez: no hay data.json todavía
       if (hasAnyData(S) || why === 'connect') { CL.sha = await ghPut(JSON.stringify(Object.assign(JSON.parse(local), { savedAt: S.dataAt || new Date().toISOString() }), null, 1)); CL.synced = local; }
@@ -1029,7 +1030,6 @@ function renderVolume() {
   const pv = plannedVolume(), mon = weekMonday(todayISO()), dv = weekDoneVolume(mon), wk = isoWeek(mon);
   const maxD = Math.max(...MUSCLES.map(m => pv[m].direct));
   let h = `<div class="week-header"><h2>Volumen semanal por grupo muscular</h2></div>
-    <div class="week-sub">Series directas = ejercicios cuyo músculo principal es ese grupo. Indirectas = trabajo secundario (remos, dominadas, presses). ★ = prioridad.</div>
     <div class="day-card"><div class="day-title tool"><span>Plan semanal</span><span style="font-size:12px;font-weight:500">Semana ${wk.w} · hechas desde ${fmtDate(mon)}</span></div>
     <table class="ex-table"><thead><tr><th class="col-ex">Músculo</th><th class="col-s">Directas</th><th class="col-s">Indirectas</th>
       <th class="col-n">Reparto (directas)</th><th class="col-kg">Hechas esta semana</th></tr></thead><tbody>`;
@@ -1045,15 +1045,14 @@ function renderVolume() {
   const tot = PLAN.reduce((a, d) => a + totalSets(d), 0);
   const totDone = MUSCLES.reduce((a, m) => a + dv[m], 0);
   h += `<tr><td class="col-ex"><b>Total</b></td><td class="col-s"><b>${tot}</b></td><td class="col-s"></td><td class="col-n">${PLAN.filter(d => d.type === 'train').map(d => `${d.short} ${totalSets(d)}`).join(' · ')}</td><td class="col-kg">${totDone} / ${tot}</td></tr>`;
-  h += `</tbody></table></div>
-    <div class="method-box" style="margin-top:0"><b>Volumen directo de brazos (del plan)</b><br>${esc(ARMS_NOTE)}</div>`;
+  h += `</tbody></table></div>`;
 
-  h += `<div class="day-card" style="margin-top:20px"><div class="day-title tool">Ejercicios por grupo muscular</div><div class="day-body">`;
+  h += `<details class="day-card plan-fold" data-fold="musc"${foldOpen('musc')}><summary class="day-title tool">Ejercicios por grupo muscular</summary><div class="day-body">`;
   MUSCLES.forEach(m => {
     const list = []; PLAN.forEach(d => (d.ex || []).map(eff).forEach(e => { if (e.prim === m) list.push(`${d.short}: ${esc(e.name)} (${e.sets}×${esc(e.reps)})`); else if (e.sec.includes(m)) list.push(`<span class="hist-meta">${d.short}: ${esc(e.name)} — indirecto</span>`); }));
     if (list.length) h += `<div style="margin-bottom:10px">${mTag(m, false)}<div class="kg-meta" style="font-size:11.5px;color:#c7d2dd">${list.join('<br>')}</div></div>`;
   });
-  return h + `</div></div>`;
+  return h + `</div></details>`;
 }
 
 function lineChart(series, opt) {
@@ -1147,7 +1146,8 @@ function renderWeight() {
 
   // Nutrición
   h += `<div class="two-col" style="margin-top:20px">
-    <div class="day-card"><div class="day-title tool"><span>Nutrición del día</span><input type="date" class="date-in" id="f-date" data-act="food-date" value="${esc(S.ui.foodDate || today)}"></div><div class="day-body">`;
+    <details class="day-card plan-fold" data-fold="food"${foldOpen('food')}><summary class="day-title tool">Nutrición del día</summary><div class="day-body">
+      <label class="field" style="margin-bottom:10px">Fecha<input type="date" id="f-date" data-act="food-date" value="${esc(S.ui.foodDate || today)}"></label>`;
   const fd = S.food[S.ui.foodDate || today] || {};
   h += `<div class="form-row">
       <label class="field">Calorías (kcal)<input type="text" inputmode="numeric" id="f-kcal" value="${esc(fd.kcal || '')}"></label>
@@ -1160,8 +1160,8 @@ function renderWeight() {
     const v = num(fShow[x[0]]), t = T[x[0]], p = v === null ? 0 : v / t * 100;
     return `<div style="margin-bottom:8px"><div class="prog-txt"><span>${x[2]}</span><span>${v === null ? '–' : fmtInt(v)} / ${fmtInt(t)} ${x[1]}</span></div>
       <div class="bar"><span class="${p >= 95 && p <= 110 ? 'done' : (p > 110 ? 'over' : '')}" style="width:${Math.min(100, p)}%"></span></div></div>`; }).join('');
-  h += `</div></div>
-    <div class="day-card"><div class="day-title tool">Objetivos nutricionales</div><div class="day-body">
+  h += `</div></details>
+    <details class="day-card plan-fold" data-fold="targets"${foldOpen('targets')}><summary class="day-title tool">Objetivos nutricionales</summary><div class="day-body">
       <div class="form-row">
         <label class="field">Calorías (kcal)<input type="text" inputmode="numeric" id="t-kcal" value="${T.kcal}"></label>
         <label class="field">Proteína (g)<input type="text" inputmode="numeric" id="t-prot" value="${T.prot}"></label>
@@ -1179,13 +1179,14 @@ function renderWeight() {
         <li>Si sube más de 0,4–0,5 kg por semana de forma sostenida: considerar reducir unas 100–150 kcal/día.</li>
         <li>Objetivo orientativo de ganancia: alrededor de 0,1–0,25 kg por semana. No todo el peso ganado será músculo.</li>
       </ul></div>
-    </div></div></div>`;
+    </div></details></div>`;
   return h;
 }
 
-// Desplegables de HIST: cerrados por defecto; la nube se abre sola si no está conectada o hay error
+// Desplegables: cerrados al entrar en la pantalla; la nube se abre sola si no está conectada o hay error
+let FOLD = {};   // en memoria: se vacía al cambiar de pestaña, no se guarda
 function foldOpen(key) {
-  const f = (S.ui.fold || {})[key];
+  const f = FOLD[key];
   if (f !== undefined) return f ? ' open' : '';
   return key === 'cloud' && (!CL.token || CL.status === 'error') ? ' open' : '';
 }
@@ -1282,7 +1283,7 @@ function refreshSessionBits(exId) {
 }
 function onClick(ev) {
   const t = ev.target.closest('[data-tab],[data-act]'); if (!t) return;
-  if (t.dataset.tab) { S.ui.tab = t.dataset.tab; save(); render(); window.scrollTo({ top: document.getElementById('nav').offsetTop, behavior:'smooth' }); return; }
+  if (t.dataset.tab) { if (t.dataset.tab !== S.ui.tab) FOLD = {}; S.ui.tab = t.dataset.tab; save(); render(); window.scrollTo({ top: document.getElementById('nav').offsetTop, behavior:'smooth' }); return; }
   const act = t.dataset.act;
   if (act === 'toggle') {
     const day = curDay(), d = draftOf(day.key), ex = eff(EX_BY_ID[t.dataset.ex]), i = +t.dataset.i, s = d.sets[ex.id][i];
@@ -1458,12 +1459,12 @@ function boot() {
   document.addEventListener('visibilitychange', () => {
     tick();
     if (!CL.token) return;
-    if (document.visibilityState === 'visible') syncNow('open');          // al volver a la app, trae lo último
+    if (document.visibilityState === 'visible') { if (Date.now() - lastPull > PULL_EVERY || payloadOf(S) !== CL.synced) syncNow('open'); }   // al volver: como mucho cada 5 min
     else if (payloadOf(S) !== CL.synced) { clearTimeout(syncT); syncNow('leave'); }   // al salir, sube lo pendiente
   });
   document.addEventListener('toggle', e => {   // 'toggle' no burbujea: se escucha en captura
     const k = e.target && e.target.dataset ? e.target.dataset.fold : null; if (!k) return;
-    S.ui.fold = Object.assign({}, S.ui.fold, { [k]: e.target.open }); save();
+    FOLD[k] = e.target.open;
   }, true);
   window.addEventListener('online', () => { if (CL.token) syncNow('online'); });
   render();
