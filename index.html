@@ -735,7 +735,7 @@ function draftOf(dayKey) {
   let d = S.drafts[dayKey];
   const day = PLAN.find(x => x.key === dayKey);
   if (!d || !d.sets) d = S.drafts[dayKey] = { sets:{} };
-  // La fecha solo queda fija si la eliges a mano. Si no, es el día del primer ✓ o, antes de empezar, hoy.
+  // La fecha solo queda fija si la eliges a mano. Si no, es el día en que guardas la sesión.
   // (Antes se fijaba al crear el borrador: abrir la pestaña un día y entrenar al siguiente guardaba la fecha vieja.)
   if (d.date && !d.dateManual) delete d.date;
   day.ex.forEach(e => {
@@ -844,7 +844,8 @@ function startTimer(exId) {
   S.timer = { ex: exId, name: ex.name, dur, start: now, end: now + dur * 1000, beeped: false }; save(); armRestAudio(); tick();
 }
 // Fecha del borrador: la elegida a mano, si no el día del primer ✓, si no hoy
-function draftDate(d) { return (d && d.dateManual && d.date) ? d.date : (d && d.startedAt ? isoDate(new Date(d.startedAt)) : todayISO()); }
+// Fecha de la sesión = el día en que pulsas "Guardar sesión" (salvo que la elijas a mano)
+function draftDate(d) { return (d && d.dateManual && d.date) ? d.date : todayISO(); }
 function autoStart(exId) {   // ✓ y escribir reps casi a la vez no deben reiniciar dos veces
   const t = S.timer;
   if (t && t.ex === exId && Date.now() - t.start < 5000) return;
@@ -1290,6 +1291,8 @@ function onClick(ev) {
     }
     s.done = !s.done;
     // cronómetro de la sesión: empieza con el primer ✓ y se para al completar la última serie
+    // un ✓ de otro día (borrador olvidado) no cuenta: el cronómetro empieza con el primer ✓ de hoy
+    if (s.done && d.startedAt && isoDate(new Date(d.startedAt)) !== todayISO()) { d.startedAt = null; d.endedAt = null; }
     if (s.done && !d.startedAt) d.startedAt = Date.now();
     const prg = draftProgress(day.key);
     if (prg.done === prg.total) { if (!d.endedAt) d.endedAt = Date.now(); } else d.endedAt = null;
