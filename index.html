@@ -734,7 +734,10 @@ function dynSuggest(ex) {
 function draftOf(dayKey) {
   let d = S.drafts[dayKey];
   const day = PLAN.find(x => x.key === dayKey);
-  if (!d || !d.sets) d = S.drafts[dayKey] = { date: todayISO(), sets:{} };
+  if (!d || !d.sets) d = S.drafts[dayKey] = { sets:{} };
+  // La fecha solo queda fija si la eliges a mano. Si no, es el día del primer ✓ o, antes de empezar, hoy.
+  // (Antes se fijaba al crear el borrador: abrir la pestaña un día y entrenar al siguiente guardaba la fecha vieja.)
+  if (d.date && !d.dateManual) delete d.date;
   day.ex.forEach(e => {
     if (!Array.isArray(d.sets[e.id])) d.sets[e.id] = [];
     while (d.sets[e.id].length < e.sets) d.sets[e.id].push({ kg:'', reps:'', rir:'', done:false });
@@ -801,8 +804,34 @@ function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque del
   try { if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) { /* sin audio */ }
 }
+// Sonido con pantalla bloqueada: al empezar el descanso (con un toque, que iOS exige) se reproduce un audio
+// que es silencio durante el descanso y termina en tres pitidos. Como el pitido va dentro del audio,
+// suena aunque iOS congele la página al bloquear. Sale por los AirPods si están conectados.
+let restAudio = null, restAudioOk = false;
+function restWav(silenceSec) {
+  const sr = 8000, beepN = Math.round(sr * 0.2), gapN = Math.round(sr * 0.15), sil = Math.max(0, Math.round(sr * silenceSec));
+  const n = sil + 3 * beepN + 2 * gapN, buf = new Uint8Array(44 + n), dv = new DataView(buf.buffer);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) buf[o + i] = s.charCodeAt(i); };
+  str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); str(36, 'data'); dv.setUint32(40, n, true);
+  buf.fill(128, 44);
+  for (let b = 0; b < 3; b++) { const o = 44 + sil + b * (beepN + gapN);
+    for (let i = 0; i < beepN; i++) { const env = Math.min(1, i / 80, (beepN - i) / 80); buf[o + i] = 128 + Math.round(110 * env * Math.sin(2 * Math.PI * 880 * i / sr)); } }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+function stopRestAudio() { if (restAudio) { try { restAudio.pause(); URL.revokeObjectURL(restAudio.src); } catch (e) { /* nada */ } restAudio = null; restAudioOk = false; } }
+function armRestAudio() {          // llamar siempre desde un toque (✓, ⏱, −15/+15, 🔊)
+  stopRestAudio();
+  if (!S.sound || !S.timer) return;
+  const left = (S.timer.end - Date.now()) / 1000; if (left <= 0) return;
+  try {
+    const a = new Audio(URL.createObjectURL(restWav(left)));
+    a.setAttribute('playsinline', ''); restAudio = a;
+    const p = a.play(); if (p && p.then) p.then(() => { if (restAudio === a) restAudioOk = true; }).catch(() => { if (restAudio === a) restAudioOk = false; });
+  } catch (e) { restAudio = null; }
+}
 function beep() {
-  if (!S.sound) return;
+  if (!S.sound || restAudioOk) return;   // si el audio programado está sonando, el pitido ya va en él
   try { if (audioCtx) [0, 0.35, 0.7].forEach(off => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + off;
     o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
@@ -811,8 +840,10 @@ function beep() {
 function startTimer(exId) {
   const ex = eff(EX_BY_ID[exId]); unlockAudio();
   const dur = restSecs(ex), now = Date.now();
-  S.timer = { ex: exId, name: ex.name, dur, start: now, end: now + dur * 1000, beeped: false }; save(); tick();
+  S.timer = { ex: exId, name: ex.name, dur, start: now, end: now + dur * 1000, beeped: false }; save(); armRestAudio(); tick();
 }
+// Fecha del borrador: la elegida a mano, si no el día del primer ✓, si no hoy
+function draftDate(d) { return (d && d.dateManual && d.date) ? d.date : (d && d.startedAt ? isoDate(new Date(d.startedAt)) : todayISO()); }
 function autoStart(exId) {   // ✓ y escribir reps casi a la vez no deben reiniciar dos veces
   const t = S.timer;
   if (t && t.ex === exId && Date.now() - t.start < 5000) return;
@@ -832,6 +863,7 @@ function paintSessTime() {
   el.classList.toggle('run', !!(d && d.startedAt && !d.endedAt));
 }
 function stopTimer() { S.timer = null; save(); tick(); }
+function cancelTimer() { stopRestAudio(); stopTimer(); }   // parada manual: corta también el sonido programado
 function tick() {
   if (!S) return;
   paintSessTime();
@@ -917,7 +949,7 @@ function renderDay(day) {
 
   const d = draftOf(day.key), pr = draftProgress(day.key);
   h += `<div class="day-card" id="session-card"><div class="day-title"><span>Registro de la sesión</span>
-      <input type="date" class="date-in" data-act="draft-date" value="${esc(d.date)}"></div>
+      <input type="date" class="date-in" data-act="draft-date" value="${esc(draftDate(d))}"></div>
     <div class="prog-wrap"><div class="prog-txt"><span>Progreso de la sesión</span><span><span id="prog-txt">${pr.done} / ${pr.total} series</span> · <span class="sess-time" id="sess-time">${sessTimeTxt(d)}</span></span></div>
       <div class="progress${pr.done === pr.total ? ' ok' : ''}" id="prog-bar"><span style="width:${pr.total ? pr.done / pr.total * 100 : 0}%"></span></div></div>`;
   day.ex.map(eff).forEach(ex => {
@@ -1181,7 +1213,8 @@ function renderHistory() {
     h += `<details class="hist-item"><summary><span><b>${fmtDate(se.date)}</b> · ${day ? day.name + ' — ' + esc(day.title) : esc(se.day)}</span><span class="hist-meta">${done}/${day ? totalSets(day) : '?'} series${se.durS ? ' · ⏱ ' + fmtDur(se.durS) : ''} · ${fmtInt(vol)} kg·rep</span></summary><div class="hist-body">`;
     se.ex.forEach(e => { const ds = doneSets(e.sets); const ex = EX_BY_ID[e.id];
       h += `<div class="row"><b>${esc(e.vname || (ex ? ex.name : e.name))}</b> — ${ds.length ? ds.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}${num(s.rir) !== null ? ' @' + num(s.rir) : ''}`).join(' · ') : '<span class="hist-meta">sin series completadas</span>'}</div>`; });
-    h += `<div style="margin-top:8px"><button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
+    h += `<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="hist-meta">Fecha <input type="date" class="date-in" data-act="sess-date" data-id="${esc(se.id)}" value="${esc(se.date)}"></label>
+      <button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
   });
   h += `</div>`;
   // Nube
@@ -1269,7 +1302,7 @@ function onClick(ev) {
     const day = curDay(), d = draftOf(day.key), pr = draftProgress(day.key);
     if (!pr.done) { toast('Marca al menos una serie como completada', true); return; }
     if (pr.done < pr.total && !confirm(`Hay ${pr.total - pr.done} series sin marcar. ¿Guardar la sesión igualmente?`)) return;
-    const date = d.date || todayISO();
+    const date = draftDate(d);
     const dup = S.sessions.find(x => x.day === day.key && x.date === date);
     if (dup && !confirm(`Ya hay una sesión de ${day.name} guardada el ${fmtDate(date)}. ¿Reemplazarla?`)) return;
     if (dup) S.sessions = S.sessions.filter(x => x !== dup);
@@ -1290,18 +1323,18 @@ function onClick(ev) {
     S.weights = S.weights.filter(w => w.date !== t.dataset.date); save(); render();
   } else if (act === 'timer') {
     const id = t.dataset.ex, run = S.timer && S.timer.ex === id && S.timer.end > Date.now();
-    if (run) stopTimer(); else startTimer(id);
+    if (run) cancelTimer(); else startTimer(id);
   } else if (act === 't-sound') {
-    S.sound = !S.sound; if (S.sound) unlockAudio(); save(); tick();
+    S.sound = !S.sound; if (S.sound) unlockAudio(); save(); armRestAudio(); tick();
     toast(S.sound ? 'Sonido activado al terminar el descanso' : 'Sonido desactivado');
   } else if (act === 't-stop') {
-    stopTimer();
+    cancelTimer();
   } else if (act === 't-adj') {
     if (!S.timer) return;
     const d = +t.dataset.d, nd = Math.max(15, S.timer.dur + d);
     S.timer.end += (nd - S.timer.dur) * 1000; S.timer.dur = nd;
     if (S.timer.end > Date.now()) S.timer.beeped = false;
-    S.rest[S.timer.ex] = nd; save(); tick();
+    S.rest[S.timer.ex] = nd; save(); armRestAudio(); tick();
   } else if (act === 'quick-steps') {
     const v = num(String(document.getElementById('qs-val').value).replace(/[.,\s]/g, ''));
     if (v === null || v < 0 || v > 150000) { toast('Introduce un número de pasos válido', true); return; }
@@ -1369,7 +1402,15 @@ function onInput(ev) {
 }
 function onChange(ev) {
   const t = ev.target;
-  if (t.dataset.act === 'draft-date') { const d = draftOf(curDay().key); d.date = t.value || todayISO(); save(); }
+  if (t.dataset.act === 'draft-date') {
+    const d = draftOf(curDay().key);
+    if (t.value) { d.date = t.value; d.dateManual = true; } else { delete d.date; d.dateManual = false; t.value = draftDate(d); }
+    save();
+  }
+  else if (t.dataset.act === 'sess-date') {
+    const se = S.sessions.find(x => x.id === t.dataset.id); if (!se || !t.value) return;
+    se.date = t.value; save(); render(); toast('Fecha de la sesión cambiada a ' + fmtDate(t.value));
+  }
   else if (t.dataset.act === 'food-date') { S.ui.foodDate = t.value || todayISO(); save(); render(); }
   else if (t.dataset.act === 'cmp-ex') { S.ui.cmpEx = t.value; save(); render(); }
   else if (t.dataset.act === 'variant') {
