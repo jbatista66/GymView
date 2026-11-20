@@ -855,6 +855,7 @@ function autoStart(exId) {   // ✓ y escribir reps casi a la vez no deben reini
 function fmtDur(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ':' + pad(m) : m) + ':' + pad(s); }
 function sessTimeTxt(d) {
   if (!d || !d.startedAt) return '⏱ 0:00';
+  if (!d.endedAt && isoDate(new Date(d.startedAt)) !== todayISO()) return '⏱ 0:00';   // borrador de otro día: aún no ha empezado hoy
   return '⏱ ' + fmtDur(((d.endedAt || Date.now()) - d.startedAt) / 1000) + (d.endedAt ? ' ✓' : '');
 }
 function paintSessTime() {
