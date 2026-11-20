@@ -760,9 +760,9 @@ function draftProgress(dayKey) {
 // RENDER
 // =====================================================================
 const TOOLS = [
+  { key:'hist', short:'HIST', tab:'Historial' },
   { key:'vol', short:'VOL', tab:'Músculos' },
-  { key:'peso', short:'PESO', tab:'Dieta · Peso' },
-  { key:'hist', short:'HIST', tab:'Historial' }
+  { key:'peso', short:'PESO', tab:'Dieta · Peso' }
 ];
 function todayKey() { const dow = new Date().getDay(); return PLAN.find(d => d.dow === dow).key; }
 
@@ -1183,30 +1183,16 @@ function renderWeight() {
   return h;
 }
 
+// Desplegables de HIST: cerrados por defecto; la nube se abre sola si no está conectada o hay error
+function foldOpen(key) {
+  const f = (S.ui.fold || {})[key];
+  if (f !== undefined) return f ? ' open' : '';
+  return key === 'cloud' && (!CL.token || CL.status === 'error') ? ' open' : '';
+}
 function renderHistory() {
   const list = sessionsSorted();
   let h = `<div class="week-header"><h2>Historial de entrenamientos</h2></div>
     <div class="week-sub">${list.length} sesiones guardadas${list.length ? ' · última ' + fmtDate(list[0].date) : ''}</div>`;
-  // Comparador
-  const allEx = []; PLAN.forEach(d => (d.ex || []).forEach(e => allEx.push(e)));
-  const sel = S.ui.cmpEx && EX_BY_ID[S.ui.cmpEx] ? S.ui.cmpEx : allEx[0].id;
-  const ex = EX_BY_ID[sel], eh = exHistory(sel).slice(0, 30).reverse();   // últimas 30 sesiones
-  h += `<div class="day-card"><div class="day-title tool">Comparar pesos entre sesiones</div><div class="day-body">
-    <label class="field">Ejercicio<select data-act="cmp-ex">${PLAN.filter(d => d.type === 'train').map(d => `<optgroup label="${d.name} — ${esc(d.title)}">${d.ex.map(eff).map(e => `<option value="${e.id}"${e.id === sel ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
-  if (!eh.length) h += `<div class="empty" style="margin-top:8px">Todavía no hay sesiones guardadas de este ejercicio.</div></div></div>`;
-  else {
-    h += `<div class="chart-box">${lineChart([{ pts: eh.map(x => ({ x: parseISO(x.date).getTime(), y: statsOf(x.sets).top })), color:'#e74c3c', dots:true, width:2.5, r:4 }], { unit:' kg' })}</div>
-      <div class="kg-meta">Carga máxima por sesión (kg${ex.bw ? ' de lastre' : ''}).</div></div>
-      <table class="ex-table"><thead><tr><th class="col-ex">Fecha</th><th class="col-n">Series</th><th class="col-s">Carga máx.</th><th class="col-s">Δ</th><th class="col-s">Volumen</th><th class="col-s">1RM est.</th></tr></thead><tbody>`;
-    eh.slice().reverse().slice(0, 40).forEach((x, i, arr) => {
-      const st = statsOf(x.sets), prev = arr[i + 1] ? statsOf(arr[i + 1].sets) : null;
-      const d = prev ? st.top - prev.top : null;
-      h += `<tr><td class="col-ex">${fmtDate(x.date)}</td><td class="col-n">${setsTxt(x.sets)}</td><td class="col-s"><b>${fmtKg(st.top)}</b></td>
-        <td class="col-s"><span class="${d === null ? 'rm-flat' : (d > 0 ? 'rm-up' : (d < 0 ? 'rm-down' : 'rm-flat'))}">${d === null ? '–' : signed(d, true)}</span></td>
-        <td class="col-s">${fmtInt(st.vol)}</td><td class="col-s">${ex.bw ? '–' : fmtKg(Math.round(st.best * 10) / 10)}</td></tr>`;
-    });
-    h += `</tbody></table></div>`;
-  }
   // Sesiones
   h += `<div class="day-card"><div class="day-title tool">Sesiones</div>`;
   if (!list.length) h += `<div class="day-body"><div class="empty">Guarda tu primera sesión desde la pestaña del día.</div></div>`;
@@ -1220,8 +1206,28 @@ function renderHistory() {
       <button class="btn ghost small" data-act="del-session" data-id="${esc(se.id)}">Borrar sesión</button></div></div></details>`;
   });
   h += `</div>`;
+  // Comparador
+  const allEx = []; PLAN.forEach(d => (d.ex || []).forEach(e => allEx.push(e)));
+  const sel = S.ui.cmpEx && EX_BY_ID[S.ui.cmpEx] ? S.ui.cmpEx : allEx[0].id;
+  const ex = EX_BY_ID[sel], eh = exHistory(sel).slice(0, 30).reverse();   // últimas 30 sesiones
+  h += `<details class="day-card plan-fold" data-fold="cmp"${foldOpen('cmp')}><summary class="day-title tool">Comparar pesos entre sesiones</summary><div class="day-body">
+    <label class="field">Ejercicio<select data-act="cmp-ex">${PLAN.filter(d => d.type === 'train').map(d => `<optgroup label="${d.name} — ${esc(d.title)}">${d.ex.map(eff).map(e => `<option value="${e.id}"${e.id === sel ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+  if (!eh.length) h += `<div class="empty" style="margin-top:8px">Todavía no hay sesiones guardadas de este ejercicio.</div></div></details>`;
+  else {
+    h += `<div class="chart-box">${lineChart([{ pts: eh.map(x => ({ x: parseISO(x.date).getTime(), y: statsOf(x.sets).top })), color:'#e74c3c', dots:true, width:2.5, r:4 }], { unit:' kg' })}</div>
+      <div class="kg-meta">Carga máxima por sesión (kg${ex.bw ? ' de lastre' : ''}).</div></div>
+      <table class="ex-table"><thead><tr><th class="col-ex">Fecha</th><th class="col-n">Series</th><th class="col-s">Carga máx.</th><th class="col-s">Δ</th><th class="col-s">Volumen</th><th class="col-s">1RM est.</th></tr></thead><tbody>`;
+    eh.slice().reverse().slice(0, 40).forEach((x, i, arr) => {
+      const st = statsOf(x.sets), prev = arr[i + 1] ? statsOf(arr[i + 1].sets) : null;
+      const d = prev ? st.top - prev.top : null;
+      h += `<tr><td class="col-ex">${fmtDate(x.date)}</td><td class="col-n">${setsTxt(x.sets)}</td><td class="col-s"><b>${fmtKg(st.top)}</b></td>
+        <td class="col-s"><span class="${d === null ? 'rm-flat' : (d > 0 ? 'rm-up' : (d < 0 ? 'rm-down' : 'rm-flat'))}">${d === null ? '–' : signed(d, true)}</span></td>
+        <td class="col-s">${fmtInt(st.vol)}</td><td class="col-s">${ex.bw ? '–' : fmtKg(Math.round(st.best * 10) / 10)}</td></tr>`;
+    });
+    h += `</tbody></table></details>`;
+  }
   // Nube
-  h += `<div class="day-card" id="cloud-card"><div class="day-title tool">Nube (GitHub)</div><div class="day-body">`;
+  h += `<details class="day-card plan-fold" data-fold="cloud"${foldOpen('cloud')}><summary class="day-title tool">Nube (GitHub)</summary><div class="day-body">`;
   if (CL.token) {
     h += `<div class="hint ${CL.status === 'error' ? '' : 'ok'}">Conectado a <b>${esc(CL.owner)}/${esc(CL.repo)}</b> · ${esc(syncLabel().replace('☁ ', ''))}</div>
       <div class="kg-meta" style="margin:8px 0">Cada vez que guardas, los datos se suben solos a <code>${esc(CL.path)}</code>. Cada subida queda como un commit con fecha y hora en el historial del repositorio.</div>
@@ -1237,13 +1243,13 @@ function renderHistory() {
       <div style="margin-top:10px"><button class="btn" data-act="cloud-connect">Conectar</button></div>
       ${CL.status === 'error' && CL.msg ? `<div class="hint">Último error: ${esc(CL.msg)}</div>` : ''}`;
   }
-  h += `</div></div>`;
+  h += `</div></details>`;
   // Copia de seguridad
-  h += `<div class="day-card"><div class="day-title tool">Copia de seguridad</div><div class="day-body">
+  h += `<details class="day-card plan-fold" data-fold="backup"${foldOpen('backup')}><summary class="day-title tool">Copia de seguridad</summary><div class="day-body">
     <div class="kg-meta" style="margin-bottom:10px">Los datos se guardan en este navegador. Exporta un archivo de vez en cuando, o para pasarlos a otro dispositivo.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">Exportar datos (.json)</button>
       <button class="btn ghost" data-act="import">Importar datos</button><input type="file" id="imp-file" accept=".json,application/json" style="display:none">
-      <button class="btn ghost" data-act="wipe">Borrar todo</button></div></div></div>`;
+      <button class="btn ghost" data-act="wipe">Borrar todo</button></div></div></details>`;
   return h;
 }
 
@@ -1455,6 +1461,10 @@ function boot() {
     if (document.visibilityState === 'visible') syncNow('open');          // al volver a la app, trae lo último
     else if (payloadOf(S) !== CL.synced) { clearTimeout(syncT); syncNow('leave'); }   // al salir, sube lo pendiente
   });
+  document.addEventListener('toggle', e => {   // 'toggle' no burbujea: se escucha en captura
+    const k = e.target && e.target.dataset ? e.target.dataset.fold : null; if (!k) return;
+    S.ui.fold = Object.assign({}, S.ui.fold, { [k]: e.target.open }); save();
+  }, true);
   window.addEventListener('online', () => { if (CL.token) syncNow('online'); });
   render();
   paintSync();
