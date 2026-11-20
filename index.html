@@ -1259,7 +1259,7 @@ function onClick(ev) {
     if (s.done && !d.startedAt) d.startedAt = Date.now();
     const prg = draftProgress(day.key);
     if (prg.done === prg.total) { if (!d.endedAt) d.endedAt = Date.now(); } else d.endedAt = null;
-    if (!prg.done) d.startedAt = null;
+    // si desmarcas series, el cronómetro general sigue corriendo (solo se reinicia al guardar o vaciar el registro)
     save();
     if (s.done) autoStart(ex.id);
     const row = document.getElementById(`row-${ex.id}-${i}`);
