@@ -724,10 +724,13 @@ function exHistory(exId) {          // más reciente primero
   return out.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function statsOf(sets) {
+// Ejercicios con lastre (dominadas, fondos): "kg" es el lastre; volumen y 1RM usan peso corporal + lastre
+function bodyKg() { return S && S.weights && S.weights.length ? S.weights[S.weights.length - 1].kg : REF_PROFILE.refKg; }
+function statsOf(sets, ex) {
+  const add = ex && ex.bw ? bodyKg() : 0;
   let top = null, topR = 0, vol = 0, best = 0, reps = 0;
-  sets.forEach(s => { const w = num(s.kg) || 0, r = num(s.reps) || 0; reps += r; vol += w * r;
-    if (top === null || w > top || (w === top && r > topR)) { top = w; topR = r; } best = Math.max(best, e1rm(w, r)); });
+  sets.forEach(s => { const lw = num(s.kg) || 0, w = lw + add, r = num(s.reps) || 0; reps += r; vol += w * r;
+    if (top === null || lw > top || (lw === top && r > topR)) { top = lw; topR = r; } best = Math.max(best, e1rm(w, r)); });
   return { top, topR, vol, best, reps, n:sets.length };
 }
 function setsTxt(sets) { return sets.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}`).join(' · '); }
@@ -826,39 +829,21 @@ function stepsWeekAvg(mondayISO) {
 function restSecs(ex) { const v = S && S.rest ? num(S.rest[ex.id]) : null; return v || (ex.kind === C ? 150 : 90); }
 function fmtClock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + pad(s % 60); }
 let audioCtx = null;
-function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque del usuario
+// "ambient" = el sonido se mezcla con tu música y no la pausa (Safari 16.4+). Se fija antes de crear el audio.
+function setAmbient() { try { if (navigator.audioSession && navigator.audioSession.type !== 'ambient') navigator.audioSession.type = 'ambient'; } catch (e) { /* sin soporte */ } }
+function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque: se prepara en silencio al marcar ✓ o tocar ⏱
+  if (!S || !S.sound) return;
+  setAmbient();
   try { if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) { /* sin audio */ }
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    if (audioCtx) { const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = b; src.connect(audioCtx.destination); src.start(0); }   // silencio de 1 muestra
+  } catch (e) { /* sin audio */ }
 }
-// Sonido con pantalla bloqueada: al empezar el descanso (con un toque, que iOS exige) se reproduce un audio
-// que es silencio durante el descanso y termina en un pitido corto. Como el pitido va dentro del audio,
-// suena aunque iOS congele la página al bloquear. Sale por los AirPods si están conectados.
-let restAudio = null, restAudioOk = false;
-const BEEPS = 1;   // un único pitido corto al terminar el descanso
-function restWav(silenceSec) {
-  const sr = 8000, beepN = Math.round(sr * 0.2), gapN = Math.round(sr * 0.15), sil = Math.max(0, Math.round(sr * silenceSec));
-  const n = sil + BEEPS * beepN + (BEEPS - 1) * gapN, buf = new Uint8Array(44 + n), dv = new DataView(buf.buffer);
-  const str = (o, s) => { for (let i = 0; i < s.length; i++) buf[o + i] = s.charCodeAt(i); };
-  str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, sr, true); dv.setUint32(28, sr, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); str(36, 'data'); dv.setUint32(40, n, true);
-  buf.fill(128, 44);
-  for (let b = 0; b < BEEPS; b++) { const o = 44 + sil + b * (beepN + gapN);
-    for (let i = 0; i < beepN; i++) { const env = Math.min(1, i / 80, (beepN - i) / 80); buf[o + i] = 128 + Math.round(110 * env * Math.sin(2 * Math.PI * 880 * i / sr)); } }
-  return new Blob([buf], { type: 'audio/wav' });
-}
-function stopRestAudio() { if (restAudio) { try { restAudio.pause(); URL.revokeObjectURL(restAudio.src); } catch (e) { /* nada */ } restAudio = null; restAudioOk = false; } }
-function armRestAudio() {          // llamar siempre desde un toque (✓, ⏱, −15/+15, 🔊)
-  stopRestAudio();
-  if (!S.sound || !S.timer) return;
-  const left = (S.timer.end - Date.now()) / 1000; if (left <= 0) return;
-  try {
-    const a = new Audio(URL.createObjectURL(restWav(left)));
-    a.setAttribute('playsinline', ''); restAudio = a;
-    const p = a.play(); if (p && p.then) p.then(() => { if (restAudio === a) restAudioOk = true; }).catch(() => { if (restAudio === a) restAudioOk = false; });
-  } catch (e) { restAudio = null; }
-}
+function stopRestAudio() { /* ya no hay audio programado */ }
+function armRestAudio() { /* idem */ }
 function beep() {
-  if (!S.sound || restAudioOk) return;   // si el audio programado está sonando, el pitido ya va en él
+  if (!S.sound || !audioCtx) return;
+  try { if (audioCtx.state !== 'running') audioCtx.resume(); } catch (e) { /* nada */ }
   try { if (audioCtx) [0].forEach(off => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t0 = audioCtx.currentTime + off;
     o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
@@ -892,6 +877,25 @@ function paintSessTime() {
   el.classList.toggle('run', !!(d && d.startedAt && !d.endedAt));
 }
 function stopTimer() { S.timer = null; save(); tick(); }
+// Si un registro tiene series marcadas de un día anterior (cerraste la app sin guardar), se guarda solo con esa fecha.
+function autoSaveOldDrafts() {
+  const today = todayISO(), saved = [];
+  Object.keys(S.drafts).forEach(key => {
+    const d = S.drafts[key], day = PLAN.find(x => x.key === key); if (!d || !d.sets || !day || day.type !== 'train') return;
+    const anyDone = day.ex.some(e => (d.sets[e.id] || []).some(x => x && x.done)); if (!anyDone) return;
+    const ref = d.startedAt || d.touchedAt; if (!ref) return;
+    const date = (d.dateManual && d.date) ? d.date : isoDate(new Date(ref)); if (date >= today) return;
+    if (!S.sessions.some(x => x.day === key && x.date === date)) {
+      const durS = d.startedAt ? Math.round(((d.endedAt || d.touchedAt || d.startedAt) - d.startedAt) / 1000) : null;
+      S.sessions.push({ id: 's' + Date.now().toString(36) + key, date, day: key, saved: new Date().toISOString(), durS, auto: true,
+        ex: day.ex.map(eff).map(e => ({ id: e.id, name: e.planName, vname: e.name, sets: (d.sets[e.id] || []).map(x => ({ kg: num(x.kg), reps: num(x.reps), rir: num(x.rir), done: !!x.done })) })) });
+      saved.push(day.name + ' ' + fmtDate(date));
+    }
+    delete S.drafts[key];
+  });
+  if (saved.length) { save(); toast('Guardada automáticamente: ' + saved.join(', ')); }
+  return saved.length > 0;
+}
 function cancelTimer() { stopRestAudio(); stopTimer(); }   // parada manual: corta también el sonido programado
 function tick() {
   if (!S) return;
@@ -1025,16 +1029,16 @@ function cmpHtml(ex, d) {
   const cur = doneSets(d.sets[ex.id]).filter(s => num(s.kg) !== null);
   let out = '';
   if (h.length) {
-    const st = statsOf(h[0].sets);
+    const st = statsOf(h[0].sets, ex);
     out += `Última (${fmtDate(h[0].date)}): <b>${setsTxt(h[0].sets)}</b>`;
     if (h.length > 1) out += ` · anterior (${fmtDate(h[1].date)}): ${setsTxt(h[1].sets)}`;
     if (cur.length) {
-      const cs = statsOf(cur);
+      const cs = statsOf(cur, ex);
       out += `<br>Hoy: carga máx. <b>${fmtKg(cs.top)} kg</b> (${signed(cs.top - st.top, true)} kg) · volumen <b>${fmtInt(cs.vol)}</b> kg·rep (${signed(cs.vol - st.vol)} vs ${fmtInt(st.vol)})`;
     }
   } else {
     out += 'Primera sesión de este ejercicio';
-    if (cur.length) { const cs = statsOf(cur); out += `<br>Hoy: carga máx. <b>${fmtKg(cs.top)} kg</b> · volumen <b>${fmtInt(cs.vol)}</b> kg·rep`; }
+    if (cur.length) { const cs = statsOf(cur, ex); out += `<br>Hoy: carga máx. <b>${fmtKg(cs.top)} kg</b> · volumen <b>${fmtInt(cs.vol)}</b> kg·rep`; }
   }
   return out;
 }
@@ -1370,7 +1374,7 @@ function renderHistory() {
   if (!list.length) h += `<div class="day-body"><div class="empty">Guarda tu primera sesión desde la pestaña del día.</div></div>`;
   list.forEach(se => {
     const day = PLAN.find(d => d.key === se.day); let done = 0, vol = 0;
-    se.ex.forEach(e => { const ds = doneSets(e.sets); done += ds.length; vol += statsOf(ds).vol; });
+    se.ex.forEach(e => { const ds = doneSets(e.sets); done += ds.length; vol += statsOf(ds, EX_BY_ID[e.id]).vol; });
     h += `<details class="hist-item"><summary><span><b>${fmtDate(se.date)}</b> · ${day ? day.name + ' — ' + esc(day.title) : esc(se.day)}</span><span class="hist-meta">${done}/${day ? totalSets(day) : '?'} series${se.durS ? ' · ⏱ ' + fmtDur(se.durS) : ''} · ${fmtInt(vol)} kg·rep</span></summary><div class="hist-body">`;
     se.ex.forEach(e => { const ds = doneSets(e.sets); const ex = EX_BY_ID[e.id];
       h += `<div class="row"><b>${esc(e.vname || (ex ? ex.name : e.name))}</b> — ${ds.length ? ds.map(s => `${fmtKg(num(s.kg) || 0)}×${num(s.reps)}${num(s.rir) !== null ? ' @' + num(s.rir) : ''}`).join(' · ') : '<span class="hist-meta">sin series completadas</span>'}</div>`; });
@@ -1387,14 +1391,14 @@ function renderHistory() {
   if (!eh.length) h += `<div class="empty" style="margin-top:8px">Todavía no hay sesiones guardadas de este ejercicio.</div></div></details>`;
   else {
     h += `<div class="chart-box">${lineChart([{ pts: eh.map(x => ({ x: parseISO(x.date).getTime(), y: statsOf(x.sets).top })), color:'#e74c3c', dots:true, width:2.5, r:4 }], { unit:' kg' })}</div>
-      <div class="kg-meta">Carga máxima por sesión (kg${ex.bw ? ' de lastre' : ''}).</div></div>
+      <div class="kg-meta">Carga máxima por sesión (kg${ex.bw ? ' de lastre; volumen y 1RM incluyen tu peso corporal' : ''}).</div></div>
       <table class="ex-table"><thead><tr><th class="col-ex">Fecha</th><th class="col-n">Series</th><th class="col-s">Carga máx.</th><th class="col-s">Δ</th><th class="col-s">Volumen</th><th class="col-s">1RM est.</th></tr></thead><tbody>`;
     eh.slice().reverse().slice(0, 40).forEach((x, i, arr) => {
-      const st = statsOf(x.sets), prev = arr[i + 1] ? statsOf(arr[i + 1].sets) : null;
+      const st = statsOf(x.sets, ex), prev = arr[i + 1] ? statsOf(arr[i + 1].sets, ex) : null;
       const d = prev ? st.top - prev.top : null;
       h += `<tr><td class="col-ex">${fmtDate(x.date)}</td><td class="col-n">${setsTxt(x.sets)}</td><td class="col-s"><b>${fmtKg(st.top)}</b></td>
         <td class="col-s"><span class="${d === null ? 'rm-flat' : (d > 0 ? 'rm-up' : (d < 0 ? 'rm-down' : 'rm-flat'))}">${d === null ? '–' : signed(d, true)}</span></td>
-        <td class="col-s">${fmtInt(st.vol)}</td><td class="col-s">${ex.bw ? '–' : fmtKg(Math.round(st.best * 10) / 10)}</td></tr>`;
+        <td class="col-s">${fmtInt(st.vol)}</td><td class="col-s">${fmtKg(Math.round(st.best * 10) / 10)}</td></tr>`;
     });
     h += `</tbody></table></details>`;
   }
@@ -1474,6 +1478,7 @@ function onClick(ev) {
     // un ✓ de otro día (borrador olvidado) no cuenta: el cronómetro empieza con el primer ✓ de hoy
     if (s.done && d.startedAt && isoDate(new Date(d.startedAt)) !== todayISO()) { d.startedAt = null; d.endedAt = null; }
     if (s.done && !d.startedAt) d.startedAt = Date.now();
+    d.touchedAt = Date.now();
     const prg = draftProgress(day.key);
     if (prg.done === prg.total) { if (!d.endedAt) d.endedAt = Date.now(); } else d.endedAt = null;
     // si desmarcas series, el cronómetro general sigue corriendo (solo se reinicia al guardar o vaciar el registro)
@@ -1493,7 +1498,7 @@ function onClick(ev) {
     const durS = d.startedAt ? Math.round(((d.endedAt || Date.now()) - d.startedAt) / 1000) : null;
     S.sessions.push({ id: 's' + Date.now().toString(36), date, day: day.key, saved: new Date().toISOString(), durS,
       ex: day.ex.map(eff).map(e => ({ id: e.id, name: e.planName, vname: e.name, sets: d.sets[e.id].map(s => ({ kg: num(s.kg), reps: num(s.reps), rir: num(s.rir), done: !!s.done })) })) });
-    delete S.drafts[day.key]; save(); render(); toast('Sesión guardada');
+    delete S.drafts[day.key]; S.timer = null; save(); render(); tick(); toast('Sesión guardada');
   } else if (act === 'clear-draft') {
     if (!confirm('¿Vaciar todas las series de este registro?')) return;
     delete S.drafts[curDay().key]; save(); render();
@@ -1577,7 +1582,7 @@ function onInput(ev) {
   if (t.id === 'fd-qty') { FUI.qty = t.value; const p = document.getElementById('fd-preview'); if (p) p.innerHTML = previewHtml(); return; }
   if (t.dataset.act === 'set') {
     const day = curDay(), d = draftOf(day.key), s = d.sets[t.dataset.ex][+t.dataset.i];
-    s[t.dataset.f] = t.value.trim(); save();
+    s[t.dataset.f] = t.value.trim(); d.touchedAt = Date.now(); save();
     if (s.done) refreshSessionBits(t.dataset.ex);
   }
 }
@@ -1616,6 +1621,7 @@ function boot() {
   const st = document.getElementById('static-plan'); if (st) st.remove();
   S = loadState();
   loadCloud(); markDataChange();
+  autoSaveOldDrafts();
   requestPersist();
   if (S.ui.foodDate && S.ui.foodDate !== todayISO()) S.ui.foodDate = null;
   // al abrir la app se muestra el día de hoy
@@ -1629,6 +1635,7 @@ function boot() {
   setInterval(tick, 250);
   document.addEventListener('visibilitychange', () => {
     tick();
+    if (document.visibilityState === 'visible' && autoSaveOldDrafts()) render();
     if (!CL.token) return;
     if (document.visibilityState === 'visible') { if (Date.now() - lastPull > PULL_EVERY || payloadOf(S) !== CL.synced) syncNow('open'); }   // al volver: como mucho cada 5 min
     else if (payloadOf(S) !== CL.synced) { clearTimeout(syncT); syncNow('leave'); }   // al salir, sube lo pendiente
