@@ -457,6 +457,9 @@ const ALTS = {
     { name:'Gemelos sentado en máquina', inc:5, def:true } ],
   'jue-incbarra': [
     { name:'Press inclinado en multipower', inc:2.5, def:true } ],
+  'lun-dominadas': [   // el propio plan dice "o jalón si hace falta"; la dominada sigue siendo la opción por defecto
+    { name:'Jalón al pecho', inc:2.5 },
+    { name:'Jalón al pecho con agarre neutro', inc:2.5 } ],
   'jue-tbar': [
     { name:'Remo sentado en máquina', inc:2.5, def:true },
     { name:'Remo sentado en polea', inc:2.5 } ],
@@ -474,8 +477,8 @@ const ALTS = {
     { name:'Extensión de tríceps a una mano en polea alta', unit:'/brazo', inc:1 } ]
 };
 function variantsOf(ex) {
-  return [{ name:ex.name, unit:ex.unit || '', inc:ex.inc, plan:true }]
-    .concat((ALTS[ex.id] || []).map(a => Object.assign({ unit:'' }, a)));
+  return [{ name:ex.name, unit:ex.unit || '', inc:ex.inc, bw:!!ex.bw, note:ex.note || '', plan:true }]
+    .concat((ALTS[ex.id] || []).map(a => Object.assign({ unit:'', bw:false, note:'' }, a)));
 }
 function defaultVariant(id) { const i = (ALTS[id] || []).findIndex(a => a.def); return i < 0 ? 0 : i + 1; }
 function eff(ex) {          // ejercicio tal como lo haces: variante elegida, mismas series/reps
@@ -483,7 +486,7 @@ function eff(ex) {          // ejercicio tal como lo haces: variante elegida, mi
   let i = (S && S.vari && S.vari[ex.id] !== undefined) ? S.vari[ex.id] : defaultVariant(ex.id);
   if (!list[i]) i = 0;
   const v = list[i];
-  return Object.assign({}, ex, { name:v.name, unit:v.unit, inc:v.inc, planName:ex.name, vIdx:i, vList:list });
+  return Object.assign({}, ex, { name:v.name, unit:v.unit, inc:v.inc, bw:v.bw, note:v.note, planName:ex.name, vIdx:i, vList:list });
 }
 
 // FOODS_DB_START (USDA FoodData Central SR Legacy 2018-04 + BEDCA, Base de Datos Española de Composición de Alimentos; valores por 100 g)
