@@ -251,6 +251,13 @@
   .hist-body { padding: 0 16px 12px; font-size: 12px; }
   .hist-body .row { padding: 3px 0; border-top: 1px dashed rgba(255,255,255,0.06); }
   .hist-meta { color: var(--muted); font-size: 11px; }
+  #sum-modal { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .sm-box { background: var(--card); border: 1px solid var(--green); border-radius: 12px; padding: 18px; width: 100%; max-width: 380px; }
+  .sm-title { font-size: 18px; font-weight: 800; color: var(--green); }
+  .sm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; text-align: center; }
+  .sm-v { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .sm-l { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sm-cmp { margin-top: 14px; font-size: 13px; color: #c7d2dd; line-height: 1.45; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--green); color: #fff;
     padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 50; opacity: 0; transition: opacity 0.25s; pointer-events: none; max-width: 90vw; text-align: center; }
   .toast.show { opacity: 1; }
@@ -835,8 +842,8 @@ function fmtClock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60)
 let audioCtx = null;
 // "ambient" = el sonido se mezcla con tu música y no la pausa (Safari 16.4+). Se fija antes de crear el audio.
 function setAmbient() { try { if (navigator.audioSession && navigator.audioSession.type !== 'ambient') navigator.audioSession.type = 'ambient'; } catch (e) { /* sin soporte */ } }
-function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque: se prepara en silencio al marcar ✓ o tocar ⏱
-  if (!S || !S.sound) return;
+function unlockAudio() {   // sonido retirado (no funcionaba en iPhone); se deja vacío
+  return;
   setAmbient();
   try { if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
     if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
@@ -845,6 +852,17 @@ function unlockAudio() {   // iOS solo deja sonar audio creado tras un toque: se
 }
 function stopRestAudio() { /* ya no hay audio programado */ }
 function armRestAudio() { /* idem */ }
+// Vibración. Android: navigator.vibrate. iPhone (iOS 18+): Safari no tiene vibrate; el único gesto háptico
+// disponible es el "tic" de un interruptor nativo, y solo funciona dentro de un toque del usuario.
+function buzz(pattern) {
+  try { if (navigator.vibrate && navigator.vibrate(pattern)) return; } catch (e) { /* nada */ }
+  try {
+    let lb = document.getElementById('hap-lbl');
+    if (!lb) { lb = document.createElement('label'); lb.id = 'hap-lbl'; lb.style.cssText = 'position:fixed;left:-9999px;opacity:0;';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.setAttribute('switch', ''); lb.appendChild(cb); document.body.appendChild(lb); }
+    lb.click();
+  } catch (e) { /* sin háptica */ }
+}
 function beep() {
   if (!S.sound || !audioCtx) return;
   try { if (audioCtx.state !== 'running') audioCtx.resume(); } catch (e) { /* nada */ }
@@ -900,6 +918,30 @@ function autoSaveOldDrafts() {
   if (saved.length) { save(); toast('Guardada automáticamente: ' + saved.join(', ')); }
   return saved.length > 0;
 }
+// ===== Resumen de la sesión guardada =====
+function sessionTotals(se) {
+  let kg = 0, reps = 0, sets = 0;
+  se.ex.forEach(e => { const ds = doneSets(e.sets), st = statsOf(ds, EX_BY_ID[e.id]); kg += st.vol; reps += st.reps; sets += ds.length; });
+  return { kg: Math.round(kg), reps, sets };
+}
+function showSummary(se) {
+  const t = sessionTotals(se), day = PLAN.find(d => d.key === se.day);
+  const prev = S.sessions.filter(x => x.day === se.day && x.id !== se.id && x.date <= se.date).sort((a, b) => (b.date + b.saved).localeCompare(a.date + a.saved))[0];
+  let cmp = '<div class="sm-cmp">Primera sesión de este día: la próxima vez verás la comparación.</div>';
+  if (prev) {
+    const p = sessionTotals(prev), dk = t.kg - p.kg, dr = t.reps - p.reps;
+    const word = dk > 0 ? `levantaste <b class="rm-up">${fmtInt(dk)} kg más</b>` : (dk < 0 ? `levantaste <b class="rm-down">${fmtInt(-dk)} kg menos</b>` : 'levantaste <b>lo mismo</b>');
+    cmp = `<div class="sm-cmp">Frente a la sesión anterior (${fmtDate(prev.date)}), ${word} y ${dr === 0 ? 'las mismas repeticiones' : (dr > 0 ? dr + ' repeticiones más' : -dr + ' repeticiones menos')}`
+      + `${prev.durS && se.durS ? `, en ${fmtDur(Math.abs(se.durS - prev.durS))} ${se.durS <= prev.durS ? 'menos' : 'más'}` : ''}.</div>`;
+  }
+  const m = document.createElement('div'); m.id = 'sum-modal';
+  m.innerHTML = `<div class="sm-box"><div class="sm-title">Sesión guardada ✓</div><div class="hist-meta">${day ? esc(day.name + ' — ' + day.title) : ''} · ${fmtDate(se.date)}</div>
+    <div class="sm-grid"><div><span class="sm-v">${fmtInt(t.kg)}</span><span class="sm-l">kg levantados</span></div>
+      <div><span class="sm-v">${fmtInt(t.reps)}</span><span class="sm-l">repeticiones</span></div>
+      <div><span class="sm-v">${se.durS ? fmtDur(se.durS) : '–'}</span><span class="sm-l">tiempo</span></div></div>
+    ${cmp}<button class="btn green" style="width:100%;margin-top:14px" data-act="sum-close">Continuar</button></div>`;
+  document.body.appendChild(m);
+}
 function cancelTimer() { stopRestAudio(); stopTimer(); }   // parada manual: corta también el sonido programado
 function tick() {
   if (!S) return;
@@ -913,17 +955,16 @@ function tick() {
   });
   const bar = document.getElementById('rest-bar'); if (!bar) return;
   if (!t) { bar.className = ''; document.body.classList.remove('has-timer'); return; }
-  if (left <= 0 && !t.beeped) { t.beeped = true; save(); beep(); }
+  if (left <= 0 && !t.beeped) { t.beeped = true; save(); buzz([200, 100, 200]); }
   if (left < -10) { cancelTimer(); return; }          // se para en 0:00 y se cierra solo a los 10 s
   if (!bar.querySelector('.rb-time')) bar.innerHTML = `<div class="rb-txt"><span class="rb-lbl"></span><span class="rb-name"></span></div>
     <span class="rb-time"></span><button class="btn ghost small" data-act="t-adj" data-d="-15">−15</button>
-    <button class="btn ghost small" data-act="t-adj" data-d="15">+15</button><button class="btn ghost small" data-act="t-sound" aria-label="Sonido"></button><button class="btn ghost small" data-act="t-stop" aria-label="Parar">✕</button>`;
+    <button class="btn ghost small" data-act="t-adj" data-d="15">+15</button><button class="btn ghost small" data-act="t-stop" aria-label="Parar">✕</button>`;
   bar.className = 'show' + (left <= 0 ? ' end' : ''); document.body.classList.add('has-timer');
   bar.querySelector('.rb-lbl').textContent = left > 0 ? `Descanso (${fmtClock(t.dur)})` : 'Descanso terminado';
   const cd = curDay(), dd = cd && cd.type === 'train' && S.drafts[cd.key];
   bar.querySelector('.rb-name').textContent = t.name + (dd && dd.startedAt ? ' · sesión ' + sessTimeTxt(dd).replace('⏱ ', '') : '');
   bar.querySelector('.rb-time').textContent = fmtClock(Math.max(0, left));
-  bar.querySelector('[data-act=t-sound]').textContent = S.sound ? '🔊' : '🔇';
 }
 
 // ===== Protección de datos =====
@@ -1502,7 +1543,10 @@ function onClick(ev) {
     const durS = d.startedAt ? Math.round(((d.endedAt || Date.now()) - d.startedAt) / 1000) : null;
     S.sessions.push({ id: 's' + Date.now().toString(36), date, day: day.key, saved: new Date().toISOString(), durS,
       ex: day.ex.map(eff).map(e => ({ id: e.id, name: e.planName, vname: e.name, sets: d.sets[e.id].map(s => ({ kg: num(s.kg), reps: num(s.reps), rir: num(s.rir), done: !!s.done })) })) });
-    delete S.drafts[day.key]; S.timer = null; save(); render(); tick(); toast('Sesión guardada');
+    delete S.drafts[day.key]; S.timer = null; save(); render(); tick();
+    buzz(40); showSummary(S.sessions[S.sessions.length - 1]);
+  } else if (act === 'sum-close') {
+    const m = document.getElementById('sum-modal'); if (m) m.remove();
   } else if (act === 'clear-draft') {
     if (!confirm('¿Vaciar todas las series de este registro?')) return;
     delete S.drafts[curDay().key]; save(); render();
